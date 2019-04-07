@@ -22,6 +22,11 @@ char *prog_name;
 int main (int argc, char *argv[]) {
     int port;
     char *addr;
+    struct sockaddr_in saddr;
+    int s=0; /* SOCKET*/
+    int result;
+    int res_addr;
+
     /* for errlib to know the program name */
 	prog_name = argv[0];
 
@@ -34,5 +39,31 @@ int main (int argc, char *argv[]) {
 	port=atoi(argv[2]);
     addr=argv[1];
 
-    printf("\n client avviato ricevuto address: %s / %d \n",addr,port);
+    printf("\nClient in avvio address: %s:%d \n",addr,port);
+
+    
+    
+    s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    printf("Socket creato -> %d \n",s);
+    
+    /* CONFIGURAZIONE SOCKET */
+    saddr.sin_family = AF_INET; 
+    saddr.sin_port = htons(port); /* CONVERSIONE NETWORK ORDER SHORT*/
+    //saddr.sin_addr.s_addr = htonl(addr);
+    res_addr = inet_aton(addr,&saddr.sin_addr); /* inserimento indirizzo da stringa dotted */
+    if(res_addr==0){
+        printf("indirizzo non valido inet_aton() failed");
+    }
+
+
+
+    /* APERTURA CONNESSIONE */
+    result = connect(s,(struct sockaddr*)&saddr,sizeof(saddr));
+    if (result == -1)
+    {
+        err_quit("connect() failed");
+    }else{
+        printf("\nSocket correttamente avviato,chiusura.\n");
+    }
+        
 }

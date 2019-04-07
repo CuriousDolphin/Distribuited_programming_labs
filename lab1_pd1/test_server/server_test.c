@@ -193,7 +193,7 @@ int main (int argc, char *argv[]) {
 	/* specify address to bind to */
 	memset(&servaddr, 0, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_port = htons(port);
+	servaddr.sin_port = htons(port); 
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	Bind(listenfd, (SA*) &servaddr, sizeof(servaddr));
