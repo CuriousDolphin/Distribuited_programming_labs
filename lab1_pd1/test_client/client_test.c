@@ -23,7 +23,7 @@ int main (int argc, char *argv[]) {
     int port;
     char *addr;
     struct sockaddr_in saddr;
-    int s=0; /* SOCKET*/
+    int id_socket; /* SOCKET*/
     int result;
     int res_addr;
 
@@ -43,8 +43,8 @@ int main (int argc, char *argv[]) {
 
     
     
-    s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    printf("Socket creato -> %d \n",s);
+    id_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    printf("Socket creato -> %d \n",id_socket);
     
     /* CONFIGURAZIONE SOCKET */
     saddr.sin_family = AF_INET; 
@@ -58,12 +58,41 @@ int main (int argc, char *argv[]) {
 
 
     /* APERTURA CONNESSIONE */
-    result = connect(s,(struct sockaddr*)&saddr,sizeof(saddr));
+    result = connect(id_socket,(struct sockaddr*)&saddr,sizeof(saddr));
     if (result == -1)
     {
         err_quit("connect() failed");
     }else{
-        printf("\nSocket correttamente avviato,chiusura.\n");
+        printf("\n-Socket connection estabilited\n");
     }
+    
+    char* str1;
+    char* str2;
+    str1=malloc(sizeof(char)*30);
+    str2=malloc(sizeof(char)*30);
+
         
+    scanf("%s %s",str1,str2);  
+    strcat(str1," ");
+    strcat(str1,str2);
+    strcat(str1,"\r\n");
+    printf("\n--byte to send: %ld",strlen(str1));                 
+    int byte_sent=send(id_socket,str1,strlen(str1),0);      /* INVIO STRINGA */
+    printf("\n--sended byte: %d \n",byte_sent);    
+        
+    int byte_receved = 0;
+    char c = ' ';
+    char* buffer = malloc(50*sizeof(char));
+    while(c!='\n')
+    {
+        if(read(id_socket,&c,1) != 1) return -1;
+        buffer[byte_receved++] = c;
+    }
+    if(buffer[0] < '1' || buffer[0] > '9')
+        printf("overflow\n");
+    else
+    {
+        printf("res: %s\n",buffer);
+    }
+    
 }
