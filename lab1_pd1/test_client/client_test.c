@@ -17,6 +17,7 @@
 
 #include "errlib.h"
 #include "sockwrap.h"
+
 char *prog_name;
 
 int main (int argc, char *argv[]) {
@@ -71,28 +72,30 @@ int main (int argc, char *argv[]) {
     str1=malloc(sizeof(char)*30);
     str2=malloc(sizeof(char)*30);
 
-        
-    scanf("%s %s",str1,str2);  
-    strcat(str1," ");
-    strcat(str1,str2);
-    strcat(str1,"\r\n");
-    printf("\n--byte to send: %ld",strlen(str1));                 
-    int byte_sent=send(id_socket,str1,strlen(str1),0);      /* INVIO STRINGA */
-    printf("\n--sended byte: %d \n",byte_sent);    
-        
-    int byte_receved = 0;
-    char c = ' ';
-    char* buffer = malloc(50*sizeof(char));
-    while(c!='\n')
-    {
-        if(read(id_socket,&c,1) != 1) return -1;
-        buffer[byte_receved++] = c;
+    while(1){    
+        scanf("%s %s",str1,str2);  
+        strcat(str1," ");
+        strcat(str1,str2);
+        strcat(str1,"\r\n");
+        printf("\n--byte to send: %ld",strlen(str1));                 
+        int byte_sent=send(id_socket,str1,strlen(str1),0);      /* INVIO STRINGA */
+        printf("\n--sended byte: %d \n",byte_sent);    
+            
+        int byte_receved = 0;
+        char c = ' ';
+        char* buffer = malloc(50*sizeof(char));
+        while(c!='\n')
+        {
+            if(read(id_socket,&c,1) != 1) return -1;
+            buffer[byte_receved++] = c;
+        }
+        if(buffer[0] < '1' || buffer[0] > '9')
+            printf("overflow\n");
+        else
+        {
+            printf("res: %s\n",buffer);
+        }
     }
-    if(buffer[0] < '1' || buffer[0] > '9')
-        printf("overflow\n");
-    else
-    {
-        printf("res: %s\n",buffer);
-    }
+    close(id_socket);
     
 }
