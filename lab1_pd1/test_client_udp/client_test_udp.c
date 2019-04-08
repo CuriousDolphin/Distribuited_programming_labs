@@ -64,8 +64,12 @@ int main (int argc, char *argv[]) {
     
     result=sendto(id_socket,str,strlen(str),0,(struct sockaddr*)&saddr,sizeof(saddr));
     printf("--spediti %d caratteri\n",result);
+    
+    socklen_t s_len=sizeof(saddr);
+    
+    receved=recvfrom(id_socket,str_rec,strlen(str_rec),0,(struct sockaddr*)&saddr,&s_len);
+    printf("---byte ricevuti: %d \n---datagram: %s\n",receved,str_rec);   
+    
 
-    receved=recvfrom(id_socket,str_rec,strlen(str_rec),0,(struct sockaddr*)&saddr,sizeof(saddr));
-    printf("--byte ricevuti: %d \n --datagram: %s",receved,str_rec);
     
 }
