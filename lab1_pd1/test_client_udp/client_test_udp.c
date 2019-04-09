@@ -25,7 +25,7 @@ int main (int argc, char *argv[]) {
     struct sockaddr_in saddr;
     int id_socket; /* SOCKET*/
     int result;
-    int receved;
+    ssize_t receved;
     int res_addr;
     char* str;
     char* str_rec;
@@ -45,8 +45,6 @@ int main (int argc, char *argv[]) {
     str=argv[3];
     printf("\nClient in avvio address: %s:%d -> DGRAM %s\n",addr,port,str);
 
-    
-    
     id_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     printf("Socket creato -> %d \n",id_socket);
     
@@ -58,18 +56,13 @@ int main (int argc, char *argv[]) {
     if(res_addr==0){
         printf("indirizzo non valido inet_aton() failed");
     }
-
-
-
-    
     result=sendto(id_socket,str,strlen(str),0,(struct sockaddr*)&saddr,sizeof(saddr));
-    printf("--spediti %d caratteri\n",result);
+    printf("-byte spediti %d \n",result);
     
     socklen_t s_len=sizeof(saddr);
     
-    receved=recvfrom(id_socket,str_rec,strlen(str_rec),0,(struct sockaddr*)&saddr,&s_len);
-    printf("---byte ricevuti: %d \n---datagram: %s\n",receved,str_rec);   
+    receved=recvfrom(id_socket,str_rec,32,0,(struct sockaddr*)&saddr,&s_len);
+    printf("---byte ricevuti: %ld \n---datagram: %s\n",receved,str_rec);
     
-
-    
+         
 }
