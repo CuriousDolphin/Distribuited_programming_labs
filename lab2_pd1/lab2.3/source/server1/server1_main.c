@@ -86,11 +86,14 @@ int main (int argc, char *argv[])
 				printf("\nERRORE apertura FILE\n");
 				
 			}else{ 						/* LETTURA FILE */
-				while(fscanf(F,"%c",file_buf) != EOF){
-					file_buf++;
+				int file_len=0;
+				while(fscanf(F,"%c",&file_buf[file_len]) != EOF){
+					
+					file_len++;
+					
 				}
 
-			printf("\n-----%s:(%ld)\n",file_buf,strlen(file_buf));
+			printf("\n-----%s:(%d)\n",file_buf,file_len);
 			}
 			
 			
