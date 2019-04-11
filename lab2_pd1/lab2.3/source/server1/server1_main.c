@@ -23,8 +23,8 @@
 #include "../errlib.h"
 #include "../sockwrap.h"
 #define LISTENQ 15
-#define MAXBUFL 255
-
+#define MAXBUFL 50
+#define MAXBUFF 20
 
 #define MAX_UINT16T 0xffff
 
@@ -42,7 +42,12 @@ int main (int argc, char *argv[])
 	struct sockaddr_in servaddr, cliaddr;
 	socklen_t cliaddrlen = sizeof(cliaddr);
 	prog_name = argv[0];
-
+	char* buf;
+	char* file_buf;
+	char* file_name;
+	buf=malloc(MAXBUFL*sizeof(char));
+	file_buf=malloc(2000*sizeof(char));
+	file_name=malloc(MAXBUFF*sizeof(char));
 	if (argc!=2 || argv[1]<0){
 		err_quit ("usage: %s need <port>\n ", prog_name);
 	}
@@ -66,9 +71,34 @@ int main (int argc, char *argv[])
 		connection=Accept(id_socket, (SA*) &cliaddr, &cliaddrlen);
 		if(connection>0){
 			trace ( err_msg("(%s) - new connection from client %s:%u", prog_name, inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port)) );
+		}
+		char get_buf[4];	
+		int n_read =Recv(connection,buf,MAXBUFL,0);
+		int n_arg;
+		printf("\n--ricevuti: (%d) byte \n",n_read);
+		n_arg=sscanf(buf,"%s %s",get_buf,file_name) ;
+		if(n_arg == 2){
+			printf("\n--comando:%s\n--filename:%s\n",get_buf,file_name);
+			FILE* F;
+			F=fopen(file_name,"r");  	/*apertura FILE */
 
-		}	
+			if(F==NULL){
+				printf("\nERRORE apertura FILE\n");
+				
+			}else{ 						/* LETTURA FILE */
+				while(fscanf(F,"%c",file_buf) != EOF){
+					file_buf++;
+				}
 
+			printf("\n-----%s:(%ld)\n",file_buf,strlen(file_buf));
+			}
+			
+			
+		}else{
+			printf("\n--error number argument (sscanf)");
+		}
+		
+	
 	}
 	return 0;
 }

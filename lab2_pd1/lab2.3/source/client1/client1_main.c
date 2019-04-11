@@ -20,7 +20,7 @@
 #include "../errlib.h"
 #include "../sockwrap.h"
 #define LISTENQ 15
-#define MAXBUFL 255
+#define MAXBUFL 50
 
 
 #define MAX_UINT16T 0xffff
@@ -40,6 +40,7 @@ int main (int argc, char *argv[])
 	char *addr;
 	struct sockaddr_in  cliaddr;
 	socklen_t cliaddrlen = sizeof(cliaddr);
+	char* buf;
 	
 	prog_name = argv[0];
 	if (argc!=3 ){
