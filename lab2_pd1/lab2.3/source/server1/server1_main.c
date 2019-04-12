@@ -78,77 +78,81 @@ int main (int argc, char *argv[])
 		trace( err_msg ("(%s) waiting for connections ...", prog_name) );
 		connection=accept(id_socket, (SA*) &cliaddr, &cliaddrlen);
 			trace ( err_msg("(%s) - new connection from client %s:%u", prog_name, inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port)) );
-		
 
-			
-		
-		
-			char get_buf[4];	
-			int n_read =Recv(connection,buf,MAXBUFL,0);
-			int n_arg=0;
-			
-			printf("\n--ricevuti: (%d) byte :%s \n",n_read,buf);
-			n_arg=sscanf(buf,"%s %s",get_buf,file_name) ;
-			if(n_arg == 2 && strcmp(get_buf,"GET")==0){
-				printf("\n--comando:%s\n--filename:%s\n",get_buf,file_name);
-				F=fopen(file_name,"r");  	/*apertura FILE */
-
-				if(F==NULL){
-					printf("\nERRORE apertura FILE\n");
-					Send(connection,err,strlen(err),0);
-					close(connection);
-					
-				}else{ 						/* LETTURA FILE */
-					uint32_t file_len=0;
-					int cont=0;
-					while(fscanf(F,"%c",&file_buf[file_len]) != EOF){
-						
-						file_len++;
-						cont++;
+			int exit_condition=0;
+			while(exit_condition==0){
+					char get_buf[4];	
+					int n_read =Recv(connection,buf,MAXBUFL,0);
+					int n_arg=0;
+					if (n_read==0){
+						exit_condition=1;
+						break;
 					}
-					strcpy(response,"");
+					printf("\n--ricevuti: (%d) byte :%s \n",n_read,buf);
+					n_arg=sscanf(buf,"%s %s",get_buf,file_name) ;
+					if(n_arg == 2 && strcmp(get_buf,"GET")==0){
+						printf("\n--comando:%s\n--filename:%s\n",get_buf,file_name);
+						F=fopen(file_name,"r");  	/*apertura FILE */
 
-					file_buf[file_len]='\0';
-					//printf("\n-----%s:(%d)\n",file_buf,file_len);
-					
-					
-					struct stat st;
-					stat(file_name,&st);
-					uint32_t len=htonl(file_len);
-					uint32_t tim=htonl(st.st_mtime);
+						if(F==NULL){
+							printf("\nERRORE apertura FILE\n");
+							Send(connection,err,strlen(err),0);
+							close(connection);
+							
+						}else{ 						/* LETTURA FILE */
+							uint32_t file_len=0;
+							int cont=0;
+							while(fscanf(F,"%c",&file_buf[file_len]) != EOF){
+								
+								file_len++;
+								cont++;
+							}
+							strcpy(response,"");
 
-					sprintf(size,"%u",ntohl(file_len));
-					sprintf(timestamp,"%u",ntohl(st.st_mtime));
-					strcat(response,"+OK\r\n");
-					//strcat(response,size);
-					//strcat(response,file_buf);
-					//strcat(response,timestamp);
-					//printf("\n-------- BUILD response: \n %s%u%s%u \n\n",response,len,file_buf,tim);
+							file_buf[file_len]='\0';
+							//printf("\n-----%s:(%d)\n",file_buf,file_len);
+							
+							
+							struct stat st;
+							stat(file_name,&st);
+							uint32_t len=htonl(file_len);
+							uint32_t tim=htonl(st.st_mtime);
 
-					
-					Send(connection,response,strlen(response),0);
-					Send(connection,&len,sizeof(len),0);
-					Send(connection,file_buf,strlen(file_buf),0);
+							sprintf(size,"%u",ntohl(file_len));
+							sprintf(timestamp,"%u",ntohl(st.st_mtime));
+							strcat(response,"+OK\r\n");
+							//strcat(response,size);
+							//strcat(response,file_buf);
+							//strcat(response,timestamp);
+							//printf("\n-------- BUILD response: \n %s%u%s%u \n\n",response,len,file_buf,tim);
 
-					Send(connection,&tim,4,0);
-					
-					printf("\n--sended %s \n",file_name);
-					fclose(F);
-				}			
+							
+							Send(connection,response,strlen(response),0);
+							Send(connection,&len,sizeof(len),0);
+							Send(connection,file_buf,strlen(file_buf),0);
+
+							Send(connection,&tim,4,0);
+							
+							printf("\n--sended %s \n",file_name);
+							fclose(F);
+						}			
+						
+					}else{
+						
+						Send(connection,err,strlen(err),0);
+						printf("\n--error number argument (sscanf)");
+						exit_condition=1;
+						close(connection);
+					}
 				
-			}else{
-				
-				Send(connection,err,strlen(err),0);
-				printf("\n--error number argument (sscanf)");
-				close(connection);
 			}
-		
 		
 		//caccapupu
 		
 		sprintf(size,"any");
 		sprintf(timestamp,"any");
-		close(connection);
+		if(exit_condition==1)
+			close(connection);
 	}
 	return 0;
 }
