@@ -120,7 +120,7 @@ int main (int argc, char *argv[])
 					printf("\t---Received file size: '%u'  (byte: %ld) \n",file_len,sizeof(len));
 					file_buf=malloc(file_len*sizeof(char));
 				}
-				ssize_t rec_3=Recv(id_socket,file_buf,file_len,0);
+				ssize_t rec_3=recv(id_socket,file_buf,file_len,0);
 				if(rec_3 != -1){
 					//printf("\t---Received file content: %s  \n",file_buf);			
 					 F=fopen(argv[i],"w");

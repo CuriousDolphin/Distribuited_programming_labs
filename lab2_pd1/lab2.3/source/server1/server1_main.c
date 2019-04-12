@@ -26,7 +26,7 @@
 #define LISTENQ 15
 #define MAXBUFL 50
 #define MAXBUFF 20
-#define MAXRES 4096 /* 4kb */
+#define MAXRES 500000 /* 100mb */
 #define MAX_UINT16T 0xffff
 
 #ifdef TRACE
@@ -50,12 +50,14 @@ int main (int argc, char *argv[])
 	char size[4];
 	char timestamp[4];
 	char err[7];		
-	FILE *F;
+	
 	strcpy(err,"-ERR\r\n");
 	buf=malloc(MAXBUFL*sizeof(char));
-	file_buf=malloc(2000*sizeof(char));
+	response=malloc(MAXBUFL * sizeof(char));
+	
 	file_name=malloc(MAXBUFF*sizeof(char));
-	response=malloc(MAXRES * sizeof(char));
+	file_buf=malloc(MAXRES*sizeof(char));
+	FILE *F;
 	if (argc!=2 || argv[1]<0){
 		err_quit ("usage: %s need <port>\n ", prog_name);
 	}
@@ -103,7 +105,8 @@ int main (int argc, char *argv[])
 							exit_condition=1;
 							break;
 							
-						}else{ 						/* LETTURA FILE */
+						}else{ 	
+							printf("\n\t FILE APERTO");					/* LETTURA FILE */
 							uint32_t file_len=0;
 							int cont=0;
 							while(fscanf(F,"%c",&file_buf[file_len]) != EOF){
@@ -111,16 +114,17 @@ int main (int argc, char *argv[])
 								file_len++;
 								cont++;
 							}
+							printf("\n\t FILE LETTO: %u",file_len);	
 							strcpy(response,"");
 
-							file_buf[file_len]='\0';
+							//file_buf[file_len]='\0';
 
 							struct stat st;
 							stat(file_name,&st);
 							uint32_t len=htonl(file_len);
 							uint32_t tim=htonl(st.st_mtime);
 
-							sprintf(size,"%u",ntohl(file_len));
+				
 							sprintf(timestamp,"%u",ntohl(st.st_mtime));
 							strcat(response,"+OK\r\n");
 							Send(connection,response,strlen(response),0);
@@ -129,7 +133,7 @@ int main (int argc, char *argv[])
 
 							Send(connection,&tim,4,0);
 							
-							printf("\n\t--sended %s \n\n",file_name);
+							printf("\n\t--sended %s (%d) \n\n",file_name,cont);
 							fclose(F);
 						}			
 						
@@ -147,7 +151,10 @@ int main (int argc, char *argv[])
 		sprintf(timestamp,"any");
 		if(exit_condition==1)
 			close(connection);
+	free(response);
+	free(file_buf);
 	}
+	
 	return 0;
 }
 
