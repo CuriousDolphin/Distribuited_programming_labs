@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <ctype.h>
-#include <stdio.h>
+
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -41,12 +41,14 @@ int main (int argc, char *argv[])
 	char *request;
 	char *command_buf;
 	char *file_buf;
-	FILE *F;
+	//char file_name[20];
+	
 	//file_buf=malloc(4096*sizeof(char));
 	command_buf=malloc(10*sizeof(char));
 	request=malloc(MAXBUFL*sizeof(char));
 	struct sockaddr_in  cliaddr;
 	socklen_t cliaddrlen = sizeof(cliaddr);
+	FILE* F=NULL;
 	//char* buf;
 	//buf=malloc(5*sizeof(char));
 	prog_name = argv[0];
@@ -68,8 +70,10 @@ int main (int argc, char *argv[])
 	int i;
 	
 	for(i=3;i<argc;i++){
-		
-		strcpy(file_buf,"");
+		//file_name=argv[i];
+		printf("/ ITERAZIONE :%d -%s-/",i,argv[i]);
+		//strcpy(file_name,argv[i]);
+		//strcpy(file_buf,"");
 		strcpy(request,"");
 		strcat(request,"GET ");
 		strcat(request,argv[i]);
@@ -124,10 +128,14 @@ int main (int argc, char *argv[])
 				ssize_t rec_3=Recv(id_socket,file_buf,file_len,0);
 				if(rec_3 != -1){
 					printf("\t---Received file content: %s  \n",file_buf);
-					//F=malloc(file_len*sizeof(char));
-					//F=fopen(argv[i],"w");
-					//fprintf(F,"%s",file_buf);
-					//fclose(F);
+					
+					 F=fopen(argv[i],"w");
+					if(F==NULL){
+						printf("\n\t- errore creazione file");
+						return -1;
+					}  
+					fprintf(F,"%s",file_buf);
+					fclose(F);   
 				}
 				//file_buf[file_len-1]='\0';
 
