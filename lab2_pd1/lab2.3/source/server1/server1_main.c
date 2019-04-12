@@ -26,7 +26,7 @@
 #define LISTENQ 15
 #define MAXBUFL 50
 #define MAXBUFF 20
-
+#define MAXRES 4096 /* 4kb */
 #define MAX_UINT16T 0xffff
 
 #ifdef TRACE
@@ -47,10 +47,13 @@ int main (int argc, char *argv[])
 	char* file_buf;
 	char* file_name;
 	char* response;
+	char size[4];
+	char timestamp[4];
 	FILE *F;
 	buf=malloc(MAXBUFL*sizeof(char));
 	file_buf=malloc(2000*sizeof(char));
 	file_name=malloc(MAXBUFF*sizeof(char));
+	response=malloc(MAXRES * sizeof(char));
 	if (argc!=2 || argv[1]<0){
 		err_quit ("usage: %s need <port>\n ", prog_name);
 	}
@@ -80,6 +83,7 @@ int main (int argc, char *argv[])
 		char get_buf[4];	
 		int n_read =Recv(connection,buf,MAXBUFL,0);
 		int n_arg=0;
+		
 		printf("\n--ricevuti: (%d) byte \n",n_read);
 		n_arg=sscanf(buf,"%s %s",get_buf,file_name) ;
 		if(n_arg == 2 /*&& strcmp(get_buf,"GET")*/){
@@ -91,44 +95,54 @@ int main (int argc, char *argv[])
 				
 			}else{ 						/* LETTURA FILE */
 				uint32_t file_len=0;
+				int cont=0;
 				while(fscanf(F,"%c",&file_buf[file_len]) != EOF){
 					
 					file_len++;
-					
+					cont++;
 				}
+				strcpy(response,"");
 
-			
-				// printf("\n-----%s:(%d)\n",file_buf,file_len);
-				response=malloc((15+file_len) * sizeof(char));
-				char *size=malloc(sizeof(uint32_t));
-				char *timestamp=malloc(sizeof(uint32_t));
+				file_buf[file_len]='\0';
+			   	//printf("\n-----%s:(%d)\n",file_buf,file_len);
+				
+				
 				struct stat st;
 				stat(file_name,&st);
-				//printf("1n-----timestamp: %ld",st.st_mtime);
-				sprintf(size,"%u",htonl(file_len));
-				sprintf(timestamp,"%u",htonl(st.st_mtime));
-				strcat(response,"+OK\r\n");
-				strcat(response,size);
-				strcat(response,file_buf);
-				strcat(response,timestamp);
-				printf("\n-------- BUILD response: \n '%s' (%ld)\n\n",response,strlen(response));
+				uint32_t len=htonl(file_len);
+				uint32_t tim=htonl(st.st_mtime);
 
-				//Send(id_socket,response,strlen(response),0);
+				sprintf(size,"%u",ntohl(file_len));
+				sprintf(timestamp,"%u",ntohl(st.st_mtime));
+				strcat(response,"+OK\r\n");
+				//strcat(response,size);
+				//strcat(response,file_buf);
+				//strcat(response,timestamp);
+				printf("\n-------- BUILD response: \n %s%u%s%u \n\n",response,len,file_buf,tim);
+
+				
 				Send(connection,response,strlen(response),0);
-				//printf("\n--spediti %d byte",n_sended);
-				//free(size);
+				Send(connection,&len,sizeof(len),0);
+				Send(connection,file_buf,strlen(file_buf),0);
+
+				Send(connection,&tim,4,0);
 				
 				
 				
 			}			
 			
 		}else{
+			char err[7];
+			strcpy(err,"-err\r\n");
+			Send(connection,err,strlen(err),0);
 			printf("\n--error number argument (sscanf)");
+			close(connection);
 		}
-		int res_close=fclose(F);
-		printf("\n\n chiusura file %d",res_close);
-		//free(file_buf);
-		 free(response);
+		fclose(F);
+		
+		
+		sprintf(size,"any");
+		sprintf(timestamp,"any");
 		close(connection);
 	}
 	return 0;
