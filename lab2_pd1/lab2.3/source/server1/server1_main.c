@@ -51,7 +51,7 @@ int main (int argc, char *argv[])
 	char timestamp[4];
 	char err[7];		
 	FILE *F;
-	strcpy(err,"-err\r\n");
+	strcpy(err,"-ERR\r\n");
 	buf=malloc(MAXBUFL*sizeof(char));
 	file_buf=malloc(2000*sizeof(char));
 	file_name=malloc(MAXBUFF*sizeof(char));
@@ -88,10 +88,11 @@ int main (int argc, char *argv[])
 						exit_condition=1;
 						break;
 					}
-					//printf("\n\t--ricevuti: (%d) byte :%s \n",n_read,buf);
+					printf("\n\t--ricevuti: (%d) byte :%s \n",n_read,buf);
 					n_arg=sscanf(buf,"%s %s",get_buf,file_name) ;
+					
 					if(n_arg == 2 && strcmp(get_buf,"GET")==0){
-						//printf("\n\t--comando:%s\n--filename:%s\n",get_buf,file_name);
+						
 						F=fopen(file_name,"r");  	/*apertura FILE */
 
 						if(F==NULL){
@@ -99,6 +100,7 @@ int main (int argc, char *argv[])
 							Send(connection,err,strlen(err),0);
 						
 							close(connection);
+							exit_condition=1;
 							break;
 							
 						}else{ 						/* LETTURA FILE */
@@ -112,9 +114,7 @@ int main (int argc, char *argv[])
 							strcpy(response,"");
 
 							file_buf[file_len]='\0';
-							//printf("\n-----%s:(%d)\n",file_buf,file_len);
-							
-							
+
 							struct stat st;
 							stat(file_name,&st);
 							uint32_t len=htonl(file_len);
@@ -123,12 +123,6 @@ int main (int argc, char *argv[])
 							sprintf(size,"%u",ntohl(file_len));
 							sprintf(timestamp,"%u",ntohl(st.st_mtime));
 							strcat(response,"+OK\r\n");
-							//strcat(response,size);
-							//strcat(response,file_buf);
-							//strcat(response,timestamp);
-							//printf("\n-------- BUILD response: \n %s%u%s%u \n\n",response,len,file_buf,tim);
-
-							
 							Send(connection,response,strlen(response),0);
 							Send(connection,&len,sizeof(len),0);
 							Send(connection,file_buf,strlen(file_buf),0);
