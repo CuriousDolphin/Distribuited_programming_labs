@@ -8,7 +8,8 @@
 #include <errno.h>
 #include <ctype.h>
 #include <stdio.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -45,6 +46,8 @@ int main (int argc, char *argv[])
 	char* buf;
 	char* file_buf;
 	char* file_name;
+	char* response;
+	FILE *F;
 	buf=malloc(MAXBUFL*sizeof(char));
 	file_buf=malloc(2000*sizeof(char));
 	file_name=malloc(MAXBUFF*sizeof(char));
@@ -68,40 +71,65 @@ int main (int argc, char *argv[])
 	int connection;
 	while(1){
 		trace( err_msg ("(%s) waiting for connections ...", prog_name) );
-		connection=Accept(id_socket, (SA*) &cliaddr, &cliaddrlen);
+		connection=accept(id_socket, (SA*) &cliaddr, &cliaddrlen);
 		if(connection>0){
 			trace ( err_msg("(%s) - new connection from client %s:%u", prog_name, inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port)) );
+		}else{
+			printf("NO CONNECTION");
 		}
 		char get_buf[4];	
 		int n_read =Recv(connection,buf,MAXBUFL,0);
-		int n_arg;
+		int n_arg=0;
 		printf("\n--ricevuti: (%d) byte \n",n_read);
 		n_arg=sscanf(buf,"%s %s",get_buf,file_name) ;
-		if(n_arg == 2){
+		if(n_arg == 2 /*&& strcmp(get_buf,"GET")*/){
 			printf("\n--comando:%s\n--filename:%s\n",get_buf,file_name);
-			FILE* F;
 			F=fopen(file_name,"r");  	/*apertura FILE */
 
 			if(F==NULL){
 				printf("\nERRORE apertura FILE\n");
 				
 			}else{ 						/* LETTURA FILE */
-				int file_len=0;
+				uint32_t file_len=0;
 				while(fscanf(F,"%c",&file_buf[file_len]) != EOF){
 					
 					file_len++;
 					
 				}
 
-			printf("\n-----%s:(%d)\n",file_buf,file_len);
-			}
 			
+				// printf("\n-----%s:(%d)\n",file_buf,file_len);
+				response=malloc((15+file_len) * sizeof(char));
+				char *size=malloc(sizeof(uint32_t));
+				char *timestamp=malloc(sizeof(uint32_t));
+				struct stat st;
+				stat(file_name,&st);
+				//printf("1n-----timestamp: %ld",st.st_mtime);
+				sprintf(size,"%u",htonl(file_len));
+				sprintf(timestamp,"%u",htonl(st.st_mtime));
+				strcat(response,"+OK\r\n");
+				strcat(response,size);
+				strcat(response,file_buf);
+				strcat(response,timestamp);
+				printf("\n-------- BUILD response: \n '%s' (%ld)\n\n",response,strlen(response));
+
+				//Send(id_socket,response,strlen(response),0);
+				Send(connection,response,strlen(response),0);
+				//printf("\n--spediti %d byte",n_sended);
+				//free(size);
+				
+				
+				
+			}			
 			
 		}else{
 			printf("\n--error number argument (sscanf)");
 		}
-		
-	
+		int res_close=fclose(F);
+		printf("\n\n chiusura file %d",res_close);
+		//free(file_buf);
+		 free(response);
+		close(connection);
 	}
 	return 0;
 }
