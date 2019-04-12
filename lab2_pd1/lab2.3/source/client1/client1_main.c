@@ -41,9 +41,9 @@ int main (int argc, char *argv[])
 	char *request;
 	char *command_buf;
 	char *file_buf;
-	
-	file_buf=malloc(4096*sizeof(char));
-	command_buf=malloc(5*sizeof(char));
+	FILE *F;
+	//file_buf=malloc(4096*sizeof(char));
+	command_buf=malloc(10*sizeof(char));
 	request=malloc(MAXBUFL*sizeof(char));
 	struct sockaddr_in  cliaddr;
 	socklen_t cliaddrlen = sizeof(cliaddr);
@@ -68,6 +68,8 @@ int main (int argc, char *argv[])
 	int i;
 	
 	for(i=3;i<argc;i++){
+		
+		strcpy(file_buf,"");
 		strcpy(request,"");
 		strcat(request,"GET ");
 		strcat(request,argv[i]);
@@ -90,30 +92,44 @@ int main (int argc, char *argv[])
         }
 
         if(res_sel>0){
-			
+			//strcpy(command_buf,"");
 			uint32_t len;
+	
 			uint32_t timest;
 			uint32_t timestamp;
 			uint32_t file_len;
             ssize_t rec_=Recv(id_socket,command_buf,5,0);
-            if(rec_ != -1 && strcmp(command_buf,"+ok \r\n")!=0){
-                printf("\n\t--REPLY: %s\n",command_buf);
-				printf("\t---Received file : %s  \n",argv[i]);
+            if(strcmp(command_buf,"+OK\r\n")!=0 ){
+				printf("\t--Server error\n");
+				//printf("\n\t--REPLY: %s\n",command_buf);
+				close(id_socket);
+				break;
+			}
+
+				//len=0;
+			
+                //printf("\n\t--REPLY: '%s' (%ld)\n",command_buf,strlen(command_buf));
+				printf("\t---Received file : '%s'  (byte: %ld) \n",argv[i],rec_);
 					
 				
 				ssize_t rec_2=Recv(id_socket,&len,4,0);
-				file_len=htonl(len);
+				
 				if(rec_2 != -1){
-					printf("\t---Received file size: %u  \n",file_len);
-					
+					file_len=ntohl(len);
+					printf("\t---Received file size: '%u'  (byte: %ld) \n",file_len,sizeof(len));
+					file_buf=malloc(file_len*sizeof(char));
 				}
 
 
 				ssize_t rec_3=Recv(id_socket,file_buf,file_len,0);
 				if(rec_3 != -1){
-					//printf("\t--contenuto file: %s  \n",file_buf);
-					
+					printf("\t---Received file content: %s  \n",file_buf);
+					//F=malloc(file_len*sizeof(char));
+					//F=fopen(argv[i],"w");
+					//fprintf(F,"%s",file_buf);
+					//fclose(F);
 				}
+				//file_buf[file_len-1]='\0';
 
 
 				ssize_t rec_4=Recv(id_socket,&timest,4,0);
@@ -122,13 +138,9 @@ int main (int argc, char *argv[])
 					printf("\t---Received file timestamp: %u  \n",timestamp);
 					
 				}
-            }else{
-				printf("\t--Server error\n");
-				printf("\n\t--REPLY: %s\n",command_buf);
-				close(id_socket);
-			}
+            
         }else{
-            printf("--timeout exceded %d seconds\n",time);
+            printf("---timeout exceded %d seconds\n",time);
             
         }
 		

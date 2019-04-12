@@ -51,7 +51,7 @@ int main (int argc, char *argv[])
 	char timestamp[4];
 	char err[7];		
 	FILE *F;
-	strcpy(err,"-err\r\n");
+	strcpy(err,"-ERR\r\n");
 	buf=malloc(MAXBUFL*sizeof(char));
 	file_buf=malloc(2000*sizeof(char));
 	file_name=malloc(MAXBUFF*sizeof(char));
@@ -100,6 +100,7 @@ int main (int argc, char *argv[])
 							Send(connection,err,strlen(err),0);
 						
 							close(connection);
+							exit_condition=1;
 							break;
 							
 						}else{ 						/* LETTURA FILE */
