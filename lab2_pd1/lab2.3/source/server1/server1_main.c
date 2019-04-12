@@ -80,7 +80,6 @@ int main (int argc, char *argv[])
 			trace ( err_msg("(%s) - new connection from client %s:%u", prog_name, inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port)) );
 		
 
-
 			
 		
 		
@@ -145,6 +144,8 @@ int main (int argc, char *argv[])
 			}
 		
 		
+		//caccapupu
+		printf("--timeout exceded %d seconds\n",time);
 		sprintf(size,"any");
 		sprintf(timestamp,"any");
 		close(connection);
