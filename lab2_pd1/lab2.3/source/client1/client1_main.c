@@ -71,6 +71,7 @@ int main (int argc, char *argv[])
 		strcpy(request,"");
 		strcat(request,"GET ");
 		strcat(request,argv[i]);
+		strcat(request,"\r\n");
 		printf("\t sending: %s\n",request);
 		Send(id_socket,request,strlen(request),0);
 		 struct timeval tval;
@@ -95,43 +96,43 @@ int main (int argc, char *argv[])
 			uint32_t timestamp;
 			uint32_t file_len;
             ssize_t rec_=Recv(id_socket,command_buf,5,0);
-            if(rec_ != -1){
-                printf("\t--REPLY: %s\n",command_buf);
-                
-            }
-
-			
-            printf("\t--Received file : %s  \n",argv[i]);
-                
-            
-			ssize_t rec_2=Recv(id_socket,&len,4,0);
-			file_len=htonl(len);
-            if(rec_2 != -1){
-                printf("\t--Received file size: %u  \n",file_len);
-                
-            }
+            if(rec_ != -1 && strcmp(command_buf,"+ok \r\n")!=0){
+                printf("\n\t--REPLY: %s\n",command_buf);
+				printf("\t---Received file : %s  \n",argv[i]);
+					
+				
+				ssize_t rec_2=Recv(id_socket,&len,4,0);
+				file_len=htonl(len);
+				if(rec_2 != -1){
+					printf("\t---Received file size: %u  \n",file_len);
+					
+				}
 
 
-			ssize_t rec_3=Recv(id_socket,file_buf,file_len,0);
-			if(rec_3 != -1){
-                //printf("\t--contenuto file: %s  \n",file_buf);
-                
-            }
+				ssize_t rec_3=Recv(id_socket,file_buf,file_len,0);
+				if(rec_3 != -1){
+					//printf("\t--contenuto file: %s  \n",file_buf);
+					
+				}
 
 
-			ssize_t rec_4=Recv(id_socket,&timest,4,0);
-			timestamp=htonl(timest);
-			if(rec_4 != -1){
-                printf("\t--Received file timestamp: %u  \n",timestamp);
-                
-            }
-            
+				ssize_t rec_4=Recv(id_socket,&timest,4,0);
+				timestamp=htonl(timest);
+				if(rec_4 != -1){
+					printf("\t---Received file timestamp: %u  \n",timestamp);
+					
+				}
+            }else{
+				printf("\t--Server error\n");
+				printf("\n\t--REPLY: %s\n",command_buf);
+				close(id_socket);
+			}
         }else{
             printf("--timeout exceded %d seconds\n",time);
             
         }
-		close(id_socket);
+		
 	}
-	
+	close(id_socket);
 	return 0;
 }
