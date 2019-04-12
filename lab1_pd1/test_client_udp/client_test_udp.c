@@ -57,12 +57,45 @@ int main (int argc, char *argv[]) {
         printf("indirizzo non valido inet_aton() failed");
     }
     result=sendto(id_socket,str,strlen(str),0,(struct sockaddr*)&saddr,sizeof(saddr));
-    printf("-byte spediti %d \n",result);
+    if(result != -1){
+        printf("-byte spediti %d \n",result);
+    }else{
+        printf("-error sending datagram\n");
+    }
     
-    socklen_t s_len=sizeof(saddr);
     
-    receved=recvfrom(id_socket,str_rec,32,0,(struct sockaddr*)&saddr,&s_len);
-    printf("---byte ricevuti: %ld \n---datagram: %s\n",receved,str_rec);
+    
+    struct timeval tval;
+    fd_set cset;              //insieme di socket su cui agisce la SELECT
+    FD_ZERO(&cset);          //azzero il set
+    FD_SET(id_socket,&cset); //ASSOCIO IL SOCKET ALL'INSIEME
+    int time=4;
+    tval.tv_sec=time; tval.tv_usec=0; //imposto il tempo nell astruttura
+    int res_sel;
+
+    /* SELECT */
+    res_sel=select(FD_SETSIZE, &cset,NULL,NULL,&tval);
+    if(res_sel == -1){
+        printf("select() failed");
+        return -1;
+    }
+
+    if(res_sel>0){
+        socklen_t s_len=sizeof(saddr);
+        receved=recvfrom(id_socket,str_rec,32,0,(struct sockaddr*)&saddr,&s_len);
+        if(receved != -1){
+            printf("---byte ricevuti: %ld \n---datagram: %s\n",receved,str_rec);
+        }else{
+            printf("---error in receiving response\n");
+        }
+        
+    }else{
+        printf("no response after %d seconds\n",time);
+    }
+
+
+    
+    
     
          
 }
