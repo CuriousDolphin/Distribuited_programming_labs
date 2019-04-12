@@ -29,20 +29,19 @@
 #include "errlib.h"
 #include "sockwrap.h"
 
-extern char *prog_name;
 
 int Socket (int family, int type, int protocol)
 {
 	int n;
 	if ( (n = socket(family,type,protocol)) < 0)
-		err_sys ("(%s) error - socket() failed", prog_name);
+		err_sys (" error - socket() failed");
 	return n;
 }
 
 void Bind (int sockfd, const SA *myaddr,  socklen_t myaddrlen)
 {
 	if ( bind(sockfd, myaddr, myaddrlen) != 0)
-		err_sys ("(%s) error - bind() failed", prog_name);
+		err_sys (" error - bind() failed");
 }
 
 void Listen (int sockfd, int backlog)
@@ -51,7 +50,7 @@ void Listen (int sockfd, int backlog)
 	if ( (ptr = getenv("LISTENQ")) != NULL)
 		backlog = atoi(ptr);
 	if ( listen(sockfd,backlog) < 0 )
-		err_sys ("(%s) error - listen() failed", prog_name);
+		err_sys ("error - listen() failed");
 }
 
 
@@ -68,7 +67,7 @@ again:
 		    )
 			goto again;
 		else
-			err_sys ("(%s) error - accept() failed", prog_name);
+			err_sys ("error - accept() failed");
 	}
 	return n;
 }
@@ -77,21 +76,21 @@ again:
 void Connect (int sockfd, const SA *srvaddr, socklen_t addrlen)
 {
 	if ( connect(sockfd, srvaddr, addrlen) != 0)
-		err_sys ("(%s) error - connect() failed", prog_name);
+		err_sys (" error - connect() failed");
 }
 
 
 void Close (int fd)
 {
 	if (close(fd) != 0)
-		err_sys ("(%s) error - close() failed", prog_name);
+		err_sys (" error - close() failed");
 }
 
 
 void Shutdown (int fd, int howto)
 {
 	if (shutdown(fd,howto) != 0)
-		err_sys ("(%s) error - shutdown() failed", prog_name);
+		err_sys ("error - shutdown() failed");
 }
 
 
@@ -104,7 +103,7 @@ again:
 		if (INTERRUPTED_BY_SIGNAL)
 			goto again;
 		else
-			err_sys ("(%s) error - read() failed", prog_name);
+			err_sys (" error - read() failed");
 	}
 	return n;
 }
@@ -113,7 +112,7 @@ again:
 void Write (int fd, void *bufptr, size_t nbytes)
 {
 	if (write(fd,bufptr,nbytes) != nbytes)
-		err_sys ("(%s) error - write() failed", prog_name);
+		err_sys (" error - write() failed");
 }
 
 ssize_t Recv(int fd, void *bufptr, size_t nbytes, int flags)
@@ -121,7 +120,7 @@ ssize_t Recv(int fd, void *bufptr, size_t nbytes, int flags)
 	ssize_t n;
 
 	if ( (n = recv(fd,bufptr,nbytes,flags)) < 0)
-		err_sys ("(%s) error - recv() failed", prog_name);
+		err_sys (" error - recv() failed" );
 	return n;
 }
 
@@ -130,43 +129,43 @@ ssize_t Recvfrom (int fd, void *bufptr, size_t nbytes, int flags, SA *sa, sockle
 	ssize_t n;
 
 	if ( (n = recvfrom(fd,bufptr,nbytes,flags,sa,salenptr)) < 0)
-		err_sys ("(%s) error - recvfrom() failed", prog_name);
+		err_sys (" error - recvfrom() failed");
 	return n;
 }
 
 void Sendto (int fd, void *bufptr, size_t nbytes, int flags, const SA *sa, socklen_t salen)
 {
 	if (sendto(fd,bufptr,nbytes,flags,sa,salen) != (ssize_t)nbytes)
-		err_sys ("(%s) error - sendto() failed", prog_name);
+		err_sys ("error - sendto() failed");
 }
 
 void Send (int fd, void *bufptr, size_t nbytes, int flags)
 {
 	if (send(fd,bufptr,nbytes,flags) != (ssize_t)nbytes)
-		err_sys ("(%s) error - send() failed", prog_name);
+		err_sys ("error - send() failed");
 }
 
 
 void Inet_aton (const char *strptr, struct in_addr *addrptr) {
 
 	if (inet_aton(strptr, addrptr) == 0)
-		err_quit ("(%s) error - inet_aton() failed for '%s'", prog_name, strptr);
+		err_quit ("error - inet_aton() failed for '%s'", strptr);
 }
 
 void Inet_pton (int af, const char *strptr, void *addrptr)
 {
 	int status = inet_pton(af, strptr, addrptr);
 	if (status == 0)
-		err_quit ("(%s) error - inet_pton() failed for '%s': invalid address", prog_name, strptr);
+		err_quit ("error - inet_pton() failed for '%s': invalid address",  strptr);
 	if (status < 0)
-		err_sys ("(%s) error - inet_pton() failed for '%s'", prog_name, strptr);
+		err_sys (" error - inet_pton() failed for '%s'",  strptr);
 }
 
 
 void Inet_ntop (int af, const void *addrptr, char *strptr, size_t length)
 {
 	if ( inet_ntop(af, addrptr, strptr, length) == NULL)
-		err_quit ("(%s) error - inet_ntop() failed: invalid address", prog_name);
+		err_quit (" error - inet_ntop() failed: invalid address");
 }
 
 /* Added by Enrico Masala <masala@polito.it> Apr 2011 */
@@ -175,7 +174,7 @@ void Print_getaddrinfo_list(struct addrinfo *list_head) {
 	struct addrinfo *p = list_head;
 	char info[MAXSTR];
 	char tmpstr[MAXSTR];
-	err_msg ("(%s) listing all results of getaddrinfo", prog_name);	
+	err_msg (" listing all results of getaddrinfo");	
 	while (p != NULL) {
 		info[0]='\0';
 
@@ -223,7 +222,7 @@ void Print_getaddrinfo_list(struct addrinfo *list_head) {
 			strcat(info, " ");
 		}
 			
-		err_msg ("(%s) %s", prog_name, info);
+		err_msg (" %s",  info);
 		p = p->ai_next;
 	}
 }
@@ -269,7 +268,7 @@ ssize_t Readn (int fd, void *ptr, size_t nbytes)
 	ssize_t n;
 
 	if ( (n = readn(fd, ptr, nbytes)) < 0)
-		err_sys ("(%s) error - readn() failed", prog_name);
+		err_sys (" error - readn() failed");
 	return n;
 }
 
@@ -335,7 +334,7 @@ ssize_t Readline (int fd, void *ptr, size_t maxlen)
 	ssize_t n;
 
 	if ( (n = readline(fd, ptr, maxlen)) < 0)
-		err_sys ("(%s) error - readline() failed", prog_name);
+		err_sys (" error - readline() failed");
 	return n;
 }
 
@@ -374,7 +373,7 @@ ssize_t Readline_unbuffered (int fd, void *ptr, size_t maxlen)
 	ssize_t n;
 
 	if ( (n = readline_unbuffered(fd, ptr, maxlen)) < 0)
-		err_sys ("(%s) error - readline_unbuffered() failed", prog_name);
+		err_sys ("error - readline_unbuffered() failed");
 	return n;
 }
 
@@ -409,7 +408,7 @@ ssize_t writen (int fd, const void *vptr, size_t n)
 void Writen (int fd, void *ptr, size_t nbytes)
 {
 	if (writen(fd, ptr, nbytes) != nbytes)
-		err_sys ("(%s) error - writen() failed", prog_name);
+		err_sys (" error - writen() failed");
 }
 
 ssize_t sendn (int fd, const void *vptr, size_t n, int flags)
@@ -442,7 +441,7 @@ ssize_t sendn (int fd, const void *vptr, size_t n, int flags)
 void Sendn (int fd, void *ptr, size_t nbytes, int flags)
 {
 	if (sendn(fd, ptr, nbytes, flags) != nbytes)
-		err_sys ("(%s) error - writen() failed", prog_name);
+		err_sys (" error - writen() failed");
 }
 
 int Select (int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset, struct timeval *timeout)
@@ -454,7 +453,7 @@ again:
 		if (INTERRUPTED_BY_SIGNAL)
 			goto again;
 		else
-			err_sys ("(%s) error - select() failed", prog_name);
+			err_sys ("error - select() failed");
 	}
 	return n;
 }
@@ -464,7 +463,7 @@ pid_t Fork (void)
 {
 	pid_t pid;
 	if ((pid=fork()) < 0)
-		err_sys ("(%s) error - fork() failed", prog_name);
+		err_sys (" error - fork() failed");
 	return pid;
 }
 
@@ -491,15 +490,14 @@ struct hostent *Gethostbyname (const char *hostname)
 {
 	struct hostent *hp;
 	if ((hp = gethostbyname(hostname)) == NULL)
-		err_quit ("(%s) error - gethostbyname() failed for '%s': %s",
-				prog_name, hostname, hstrerror(h_errno));
+		err_quit ("error - gethostbyname() failed for '%s': %s", hostname, hstrerror(h_errno));
 	return hp;
 }
 
 void Getsockname (int sockfd, struct sockaddr *localaddr, socklen_t *addrp)
 {
 	if ((getsockname(sockfd, localaddr, addrp)) != 0)
-		err_quit ("(%s) error - getsockname() failed", prog_name);
+		err_quit ("error - getsockname() failed");
 }
 
 void Getaddrinfo ( const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res)
@@ -507,7 +505,7 @@ void Getaddrinfo ( const char *node, const char *service, const struct addrinfo 
 	int err_code;
 	err_code = getaddrinfo(node, service, hints, res);
 	if (err_code!=0) {
-		err_quit ("(%s) error - getaddrinfo() failed  %s %s : (code %d) %s", prog_name, node, service, err_code, gai_strerror(err_code));
+		err_quit ("error - getaddrinfo() failed  %s %s : (code %d) %s", node, service, err_code, gai_strerror(err_code));
 	}
 }
 
