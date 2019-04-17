@@ -77,7 +77,9 @@ int main (int argc, char *argv[])
 	Listen(id_socket, LISTENQ);
 	int connection;
 	char* file_buf;
-							file_buf=malloc(100000000*sizeof(char));
+	char* temp_buff; // mi serve per ripristinare il puntatore
+	file_buf=malloc(100000000*sizeof(char));
+	temp_buff=file_buf;
 	while(1){
 		trace( err_msg ("(%s) waiting for connections ...", prog_name) );
 		connection=accept(id_socket, (SA*) &cliaddr, &cliaddrlen);
@@ -93,7 +95,6 @@ int main (int argc, char *argv[])
 						exit_condition=1;
 						break;
 					}
-					//printf("\n\t--ricevuti: (%d) byte :%s \n",n_read,buf);
 					n_arg=sscanf(buf,"%s %s",get_buf,file_name) ;
 					printf("\n\t--file name: %s,\n\t--command: %s \n",file_name,get_buf);
 					if(n_arg == 2 && strcmp(get_buf,"GET")==0){
@@ -101,7 +102,7 @@ int main (int argc, char *argv[])
 						stat(file_name,&st);
 						uint32_t len=htonl(st.st_size);
 						uint32_t tim=htonl(st.st_mtime);
-						//printf("dimensione file pre lettura: %ld",st.st_size);
+						file_buf=temp_buff; //riporto il puntatore all'inizio
 						FILE *F;
 						F=fopen(file_name,"r");  	/*apertura FILE */
 
@@ -118,42 +119,22 @@ int main (int argc, char *argv[])
 							
 							printf("\n\t--File opened %s",file_name);					/* LETTURA FILE */
 							fflush(stdout);
-							
-							
-							//strcpy(file_buf,"");
-							/* while(fscanf(F,"%c",&file_buf[cont]) != EOF){
-								
-								file_len++;
-								cont++;
-								
-							} */
-							
+	
 							rewind(F);
-							
-							int bytes_read=0;
-							
-							bytes_read= fread( file_buf, 1, 100000000, F );
-							
-  							printf( "\n\t--Bytes read: %d (previsti: %ld)\n", bytes_read,st.st_size);
-							//printf("\n\t FILE LETTO: %ld",cont);	
+							int bytes_read=0;							
+							bytes_read= fread( file_buf, 1, 100000000, F );							
+  							printf( "\n\t--Bytes read: %d (previsti: %ld)\n", bytes_read,st.st_size);	
 							fflush(stdout);
 							fclose(F);
 							strcpy(response,"");
-							  
 							
-							//file_buf[file_len]='\0';
-
-							
-
-				
 							sprintf(timestamp,"%u",ntohl(st.st_mtime));
 							strcat(response,"+OK\r\n");
-							Send(connection,response,strlen(response),0);
-							//Send(connection,&len,sizeof(len),0);
-							Send(connection,&len,sizeof(len),0);
-							size_t nleft; ssize_t nwritten;
+							Send(connection,response,strlen(response),0); /* +ok */
+							Send(connection,&len,sizeof(len),0);		  /*dimensione*/
+							size_t nleft; ssize_t nwritten=0;			
 							for(nleft=bytes_read;nleft >0;){
-								nwritten=send(connection,file_buf,nleft,0); 
+								nwritten=send(connection,file_buf,nleft,0); /*FILE */
 								if(nwritten <=0 ){/*ERRORE*/
 									//	return (nwritten);
 								}else{
@@ -165,7 +146,6 @@ int main (int argc, char *argv[])
 							Send(connection,&tim,4,0);
 							
 							printf("\n\t--sended %s (%ld) \n\n",file_name,nwritten);
-							memset(file_buf,1,100000000*sizeof(char));
 							
 						}				
 					}else{
@@ -182,8 +162,6 @@ int main (int argc, char *argv[])
 		sprintf(timestamp,"any");
 		if(exit_condition==1)
 			close(connection);
-	//free(response);
-	//free(file_buf);
 	}
 	
 	return 0;
