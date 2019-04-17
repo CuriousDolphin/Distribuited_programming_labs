@@ -25,7 +25,7 @@
 #include "../sockwrap.h"
 #define LISTENQ 15
 #define MAXBUFL 50
-#define MAXBUFF 20
+#define MAXBUFF 100
 #define MAXRES 500000 /* 100mb */
 #define MAX_UINT16T 0xffff
 
@@ -56,7 +56,7 @@ int main (int argc, char *argv[])
 	response=malloc(MAXBUFL * sizeof(char));
 	
 	file_name=malloc(MAXBUFF*sizeof(char));
-	file_buf=malloc(MAXRES*sizeof(char));
+	file_buf=malloc(100000000*sizeof(char));
 	FILE *F;
 	if (argc!=2 || argv[1]<0){
 		err_quit ("usage: %s need <port>\n ", prog_name);
@@ -83,16 +83,16 @@ int main (int argc, char *argv[])
 
 		int exit_condition=0;
 			while(exit_condition==0){
-					char get_buf[4];	
+					char get_buf[4]="";	
 					int n_read =Recv(connection,buf,MAXBUFL,0);
 					int n_arg=0;
 					if (n_read==0){
 						exit_condition=1;
 						break;
 					}
-					printf("\n\t--ricevuti: (%d) byte :%s \n",n_read,buf);
+					//printf("\n\t--ricevuti: (%d) byte :%s \n",n_read,buf);
 					n_arg=sscanf(buf,"%s %s",get_buf,file_name) ;
-					
+					printf("\n\t--file name: %s,command: %s \n",file_name,get_buf);
 					if(n_arg == 2 && strcmp(get_buf,"GET")==0){
 						
 						F=fopen(file_name,"r");  	/*apertura FILE */
@@ -108,7 +108,7 @@ int main (int argc, char *argv[])
 						}else{ 	
 							printf("\n\t FILE APERTO");					/* LETTURA FILE */
 							uint32_t file_len=0;
-							int cont=0;
+							size_t cont=0;
 							while(fscanf(F,"%c",&file_buf[file_len]) != EOF){
 								
 								file_len++;
@@ -129,11 +129,22 @@ int main (int argc, char *argv[])
 							strcat(response,"+OK\r\n");
 							Send(connection,response,strlen(response),0);
 							Send(connection,&len,sizeof(len),0);
-							Send(connection,file_buf,strlen(file_buf),0);
+
+							size_t nleft; ssize_t nwritten;
+							for(nleft=cont;nleft >0;){
+								nwritten=send(connection,file_buf,nleft,0); 
+								if(nwritten <=0 ){/*ERRORE*/
+									//	return (nwritten);
+								}else{
+									nleft -=nwritten;
+									file_buf +=nwritten;
+								}
+
+							}
 
 							Send(connection,&tim,4,0);
 							
-							printf("\n\t--sended %s (%d) \n\n",file_name,cont);
+							printf("\n\t--sended %s (%ld) \n\n",file_name,cont);
 							fclose(F);
 						}			
 						
@@ -151,8 +162,8 @@ int main (int argc, char *argv[])
 		sprintf(timestamp,"any");
 		if(exit_condition==1)
 			close(connection);
-	free(response);
-	free(file_buf);
+	//free(response);
+	//free(file_buf);
 	}
 	
 	return 0;
