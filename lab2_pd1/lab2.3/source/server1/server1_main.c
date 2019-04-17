@@ -44,7 +44,7 @@ int main (int argc, char *argv[])
 	socklen_t cliaddrlen = sizeof(cliaddr);
 	prog_name = argv[0];
 	char* buf;
-	char* file_buf;
+	//char* file_buf;
 	char* file_name;
 	char* response;
 	char size[4];
@@ -56,8 +56,8 @@ int main (int argc, char *argv[])
 	response=malloc(MAXBUFL * sizeof(char));
 	
 	file_name=malloc(MAXBUFF*sizeof(char));
-	file_buf=malloc(100000000*sizeof(char));
-	FILE *F;
+	
+	
 	if (argc!=2 || argv[1]<0){
 		err_quit ("usage: %s need <port>\n ", prog_name);
 	}
@@ -76,6 +76,8 @@ int main (int argc, char *argv[])
 	trace ( err_msg("(%s) listening on %s:%u", prog_name, inet_ntoa(servaddr.sin_addr), ntohs(servaddr.sin_port)) );
 	Listen(id_socket, LISTENQ);
 	int connection;
+	char* file_buf;
+							file_buf=malloc(100000000*sizeof(char));
 	while(1){
 		trace( err_msg ("(%s) waiting for connections ...", prog_name) );
 		connection=accept(id_socket, (SA*) &cliaddr, &cliaddrlen);
@@ -83,6 +85,7 @@ int main (int argc, char *argv[])
 
 		int exit_condition=0;
 			while(exit_condition==0){
+					
 					char get_buf[4]="";	
 					int n_read =Recv(connection,buf,MAXBUFL,0);
 					int n_arg=0;
@@ -92,13 +95,19 @@ int main (int argc, char *argv[])
 					}
 					//printf("\n\t--ricevuti: (%d) byte :%s \n",n_read,buf);
 					n_arg=sscanf(buf,"%s %s",get_buf,file_name) ;
-					printf("\n\t--file name: %s,command: %s \n",file_name,get_buf);
+					printf("\n\t--file name: %s,\n\t--command: %s \n",file_name,get_buf);
 					if(n_arg == 2 && strcmp(get_buf,"GET")==0){
-						
+						struct stat st;
+						stat(file_name,&st);
+						uint32_t len=htonl(st.st_size);
+						uint32_t tim=htonl(st.st_mtime);
+						//printf("dimensione file pre lettura: %ld",st.st_size);
+						FILE *F;
 						F=fopen(file_name,"r");  	/*apertura FILE */
 
 						if(F==NULL){
 							printf("\n\tERROR FILE NOT FOUND %s\n",file_name);
+							fflush(stdout);
 							Send(connection,err,strlen(err),0);
 						
 							close(connection);
@@ -106,32 +115,44 @@ int main (int argc, char *argv[])
 							break;
 							
 						}else{ 	
-							printf("\n\t FILE APERTO");					/* LETTURA FILE */
-							uint32_t file_len=0;
-							size_t cont=0;
-							while(fscanf(F,"%c",&file_buf[file_len]) != EOF){
+							
+							printf("\n\t--File opened %s",file_name);					/* LETTURA FILE */
+							fflush(stdout);
+							
+							
+							//strcpy(file_buf,"");
+							/* while(fscanf(F,"%c",&file_buf[cont]) != EOF){
 								
 								file_len++;
 								cont++;
-							}
-							printf("\n\t FILE LETTO: %u",file_len);	
+								
+							} */
+							
+							rewind(F);
+							
+							int bytes_read=0;
+							
+							bytes_read= fread( file_buf, 1, 100000000, F );
+							
+  							printf( "\n\t--Bytes read: %d (previsti: %ld)\n", bytes_read,st.st_size);
+							//printf("\n\t FILE LETTO: %ld",cont);	
+							fflush(stdout);
+							fclose(F);
 							strcpy(response,"");
-
+							  
+							
 							//file_buf[file_len]='\0';
 
-							struct stat st;
-							stat(file_name,&st);
-							uint32_t len=htonl(file_len);
-							uint32_t tim=htonl(st.st_mtime);
+							
 
 				
 							sprintf(timestamp,"%u",ntohl(st.st_mtime));
 							strcat(response,"+OK\r\n");
 							Send(connection,response,strlen(response),0);
+							//Send(connection,&len,sizeof(len),0);
 							Send(connection,&len,sizeof(len),0);
-
 							size_t nleft; ssize_t nwritten;
-							for(nleft=cont;nleft >0;){
+							for(nleft=bytes_read;nleft >0;){
 								nwritten=send(connection,file_buf,nleft,0); 
 								if(nwritten <=0 ){/*ERRORE*/
 									//	return (nwritten);
@@ -141,13 +162,12 @@ int main (int argc, char *argv[])
 								}
 
 							}
-
 							Send(connection,&tim,4,0);
 							
-							printf("\n\t--sended %s (%ld) \n\n",file_name,cont);
-							fclose(F);
-						}			
-						
+							printf("\n\t--sended %s (%ld) \n\n",file_name,nwritten);
+							memset(file_buf,1,100000000*sizeof(char));
+							
+						}				
 					}else{
 						
 						Send(connection,err,strlen(err),0);
