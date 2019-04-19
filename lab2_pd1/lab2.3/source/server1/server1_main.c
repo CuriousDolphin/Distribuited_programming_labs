@@ -88,9 +88,9 @@ int main (int argc, char *argv[])
 			while(exit_condition==0){
 					
 					char get_buf[4]="";	
-					int n_read =Recv(connection,buf,MAXBUFL,0);
+					int n_read =recv(connection,buf,MAXBUFL,0);
 					int n_arg=0;
-					if (n_read==0){
+					if (n_read<=0){
 						exit_condition=1;
 						break;
 					}
