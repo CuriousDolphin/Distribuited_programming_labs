@@ -43,20 +43,15 @@ int main (int argc, char *argv[])
 	struct sockaddr_in servaddr, cliaddr;
 	socklen_t cliaddrlen = sizeof(cliaddr);
 	prog_name = argv[0];
-	char* buf;
-	char* file_name;
-	char* response; /* command for reply ..ok err */
+	char buf[MAXBUFL];
+	char file_name[MAXBUFF];
+	char response[MAXBUFF]; /* command for reply ..ok err */
 	char size[4];
 	char timestamp[4];
 	char err[7];   /*stringa errore*/		
 	char* start_memory; // mi serve per ripristinare il puntatore
 	strcpy(err,"-ERR\r\n");
-	buf=malloc(MAXBUFL*sizeof(char));
-	response=malloc(MAXBUFL * sizeof(char));
-	
-	file_name=malloc(MAXBUFF*sizeof(char));
-	
-	
+
 	if (argc!=2 || argv[1]<0){
 		err_quit ("usage: %s need <port>\n ", prog_name);
 	}
@@ -98,7 +93,6 @@ int main (int argc, char *argv[])
 						stat(file_name,&st);
 						uint32_t len=htonl(st.st_size);
 						uint32_t tim=htonl(st.st_mtime);
-						//file_buf=start_memory; //riporto il puntatore all'inizio
 						FILE *F;
 						F=fopen(file_name,"r");  	/*apertura FILE */
 
@@ -148,6 +142,7 @@ int main (int argc, char *argv[])
 							Send(connection,&tim,4,0);	
 							printf("\n\t--sended %s (%ld) \n\n",file_name,nwritten);
 							free(file_buf);
+							
 						}				
 					}else{
 						
@@ -157,13 +152,15 @@ int main (int argc, char *argv[])
 						close(connection);
 					}
 				
-			}		
-		
+			}
+
+			
 		sprintf(size,"any");
 		sprintf(timestamp,"any");
 		if(exit_condition==1)
 			close(connection); 
 	}
+	
 	return 0;
 }
 

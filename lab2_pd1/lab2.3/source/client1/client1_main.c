@@ -38,17 +38,12 @@ int main (int argc, char *argv[])
 	int port;
 	int res_addr;
 	char *addr;
-	char *request;
+	char request[MAXBUFL];
 	char *command_buf;
 	char *file_buf;
-	//char file_name[20];
-	
-	//file_buf=malloc(4096*sizeof(char));
-	command_buf=malloc(10*sizeof(char));
-	request=malloc(MAXBUFL*sizeof(char));
 	struct sockaddr_in  cliaddr;
 	socklen_t cliaddrlen = sizeof(cliaddr);
-	FILE* F=NULL;
+	command_buf=calloc(6,sizeof(char));
 	//char* buf;
 	//buf=malloc(5*sizeof(char));
 	prog_name = argv[0];
@@ -95,8 +90,9 @@ int main (int argc, char *argv[])
 			uint32_t timest;
 			uint32_t timestamp;
 			uint32_t file_len;
+			
             Recv(id_socket,command_buf,5,0); /* COMMAND */
-            if(strcmp(command_buf,"+OK\r\n")==0 ){
+            if(strcmp(command_buf,"+OK\r\n") == 0 ){
 				//len=0;
 				printf("\t--Received Response OK");
 				Recv(id_socket,&len,4,0); /* LUNGHEZZA */
@@ -115,7 +111,8 @@ int main (int argc, char *argv[])
 						file_buf += nread;
 					}
 				} 	  	
-				file_buf=start_memory;								
+				file_buf=start_memory;	
+				FILE* F;							
 				F=fopen(argv[i],"w");
 				if(F==NULL){
 					printf("errore salvataggio file");
@@ -145,7 +142,6 @@ int main (int argc, char *argv[])
             close(id_socket);
         }
 	}
-	free(request);
 	free(command_buf);
 	close(id_socket);
 	return 0;
