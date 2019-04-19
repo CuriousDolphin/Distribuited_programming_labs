@@ -29,20 +29,19 @@
 #include "errlib.h"
 #include "sockwrap.h"
 
-extern char *prog_name;
 
 int Socket (int family, int type, int protocol)
 {
 	int n;
 	if ( (n = socket(family,type,protocol)) < 0)
-		err_sys ("(%s) error - socket() failed", prog_name);
+		err_sys (" error - socket() failed");
 	return n;
 }
 
 void Bind (int sockfd, const SA *myaddr,  socklen_t myaddrlen)
 {
 	if ( bind(sockfd, myaddr, myaddrlen) != 0)
-		err_sys ("(%s) error - bind() failed", prog_name);
+		err_sys (" error - bind() failed");
 }
 
 void Listen (int sockfd, int backlog)
@@ -51,7 +50,7 @@ void Listen (int sockfd, int backlog)
 	if ( (ptr = getenv("LISTENQ")) != NULL)
 		backlog = atoi(ptr);
 	if ( listen(sockfd,backlog) < 0 )
-		err_sys ("(%s) error - listen() failed", prog_name);
+		err_sys ("error - listen() failed");
 }
 
 
@@ -68,7 +67,7 @@ again:
 		    )
 			goto again;
 		else
-			err_sys ("(%s) error - accept() failed", prog_name);
+			err_sys ("error - accept() failed");
 	}
 	return n;
 }
