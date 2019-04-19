@@ -44,13 +44,15 @@ int main (int argc, char *argv[])
 	socklen_t cliaddrlen = sizeof(cliaddr);
 	prog_name = argv[0];
 	char* buf;
-	//char* file_buf;
 	char* file_name;
-	char* response;
+	char* response; /* command for reply ..ok err */
 	char size[4];
 	char timestamp[4];
-	char err[7];		
-	
+	char err[7];   /*stringa errore*/		
+	char* file_buf;
+	char* start_memory; // mi serve per ripristinare il puntatore
+	file_buf=malloc(200000000*sizeof(char)); /* ALLOCO 200 mb di memoria, non è bellissimo ma efficiente*/ /* no riallocazione no ulteriori allocazioni*/
+	start_memory=file_buf;
 	strcpy(err,"-ERR\r\n");
 	buf=malloc(MAXBUFL*sizeof(char));
 	response=malloc(MAXBUFL * sizeof(char));
@@ -76,10 +78,7 @@ int main (int argc, char *argv[])
 	trace ( err_msg("(%s) listening on %s:%u", prog_name, inet_ntoa(servaddr.sin_addr), ntohs(servaddr.sin_port)) );
 	Listen(id_socket, LISTENQ);
 	int connection;
-	char* file_buf;
-	char* temp_buff; // mi serve per ripristinare il puntatore
-	file_buf=malloc(100000000*sizeof(char));
-	temp_buff=file_buf;
+	
 	while(1){
 		trace( err_msg ("(%s) waiting for connections ...", prog_name) );
 		connection=accept(id_socket, (SA*) &cliaddr, &cliaddrlen);
@@ -102,7 +101,7 @@ int main (int argc, char *argv[])
 						stat(file_name,&st);
 						uint32_t len=htonl(st.st_size);
 						uint32_t tim=htonl(st.st_mtime);
-						file_buf=temp_buff; //riporto il puntatore all'inizio
+						file_buf=start_memory; //riporto il puntatore all'inizio
 						FILE *F;
 						F=fopen(file_name,"r");  	/*apertura FILE */
 
@@ -122,7 +121,7 @@ int main (int argc, char *argv[])
 	
 							rewind(F);
 							int bytes_read=0;							
-							bytes_read= fread( file_buf, 1, 100000000, F );							
+							bytes_read= fread( file_buf, 1, st.st_size, F );							
   							printf( "\n\t--Bytes read: %d (previsti: %ld)\n", bytes_read,st.st_size);	
 							fflush(stdout);
 							fclose(F);
@@ -161,7 +160,7 @@ int main (int argc, char *argv[])
 		sprintf(size,"any");
 		sprintf(timestamp,"any");
 		if(exit_condition==1)
-			close(connection);
+			close(connection); 
 	}
 	
 	return 0;

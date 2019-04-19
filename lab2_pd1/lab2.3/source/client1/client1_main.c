@@ -10,7 +10,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-
+#include <sys/stat.h>
 #include <rpc/xdr.h>
 
 #include <string.h>
@@ -70,9 +70,6 @@ int main (int argc, char *argv[])
 	int i;
 	
 	for(i=3;i<argc;i++){
-		//file_name=argv[i];
-		//strcpy(file_name,argv[i]);
-		//strcpy(file_buf,"");
 		strcpy(request,"");
 		strcat(request,"GET ");
 		strcat(request,argv[i]);
@@ -95,55 +92,58 @@ int main (int argc, char *argv[])
         if(res_sel>0){
 			//strcpy(command_buf,"");
 			uint32_t len;
-	
 			uint32_t timest;
 			uint32_t timestamp;
 			uint32_t file_len;
-            ssize_t rec_=Recv(id_socket,command_buf,5,0);
-            if(strcmp(command_buf,"+OK\r\n")!=0 ){
+            Recv(id_socket,command_buf,5,0); /* COMMAND */
+            if(strcmp(command_buf,"+OK\r\n")==0 ){
+				//len=0;
+				printf("\t--Received Response OK");
+				Recv(id_socket,&len,4,0); /* LUNGHEZZA */
+				file_len=ntohl(len);
+				ssize_t file_size=file_len;
+				printf("\t--Received file len: '%u' byte",file_len);
+				fflush(stdout);
+				file_buf=malloc(file_size*sizeof(char)); /* ALLOCAZIONE DINAMICA, FREE PIU GIU */
+				char *start_memory=file_buf;
+				 /* RICEZIONE FILE */
+				ssize_t nread; size_t nleft;
+				 for(nleft=file_len; nleft >0 ;){
+					nread=Recv(id_socket,file_buf,nleft,0);
+					if(nread > 0){
+						nleft -=nread;
+						file_buf += nread;
+					}
+				} 	  	
+				file_buf=start_memory;								
+				F=fopen(argv[i],"w");
+				if(F==NULL){
+					printf("errore salvataggio file");
+					fflush(stdout);
+					return -1;
+				}  
+
+				fwrite(file_buf,1,file_size,F);
+				fclose(F); 
+				
+				struct stat st;
+				stat(argv[i],&st) ;
+				Recv(id_socket,&timest,4,0);
+				timestamp=htonl(timest);	
+				printf("\n\t---'%s' downloaded %ld byte",argv[i],st.st_size);
+				printf("\n\t--Received  timestamp: %u  \n\n",timestamp);	
+				free(file_buf); 
+			}else{
 				printf("\t--Server error\n");
-				//printf("\n\t--REPLY: %s\n",command_buf);
+				fflush(stdout);
 				close(id_socket);
 				break;
-			}
-
-				//len=0;
-			
-                //printf("\n\t--REPLY: '%s' (%ld)\n",command_buf,strlen(command_buf));
-				printf("\t---Received file : '%s'  (byte: %ld) \n",argv[i],rec_);
-					
-				
-				ssize_t rec_2=Recv(id_socket,&len,4,0);
-				
-				if(rec_2 != -1){
-					file_len=ntohl(len);
-					printf("\t---Received file size: '%u'  (byte: %ld) \n",file_len,sizeof(len));
-					file_buf=malloc(file_len*sizeof(char));
-				}
-				ssize_t rec_3=recv(id_socket,file_buf,file_len,0);
-				if(rec_3 != -1){
-					//printf("\t---Received file content: %s  \n",file_buf);			
-					 F=fopen(argv[i],"w");
-					if(F==NULL){
-						printf("\n\t- error creating file");
-						return -1;
-					}  
-					fprintf(F,"%s",file_buf);
-					fclose(F); 
-					free(file_buf);  
-				}
-				ssize_t rec_4=Recv(id_socket,&timest,4,0);
-				timestamp=htonl(timest);
-				if(rec_4 != -1){
-					printf("\t---Received file timestamp: %u  \n\n",timestamp);
-					
-				}
+			}	
             
         }else{
             printf("---timeout exceded %d seconds\n",time);
-            
+            close(id_socket);
         }
-		
 	}
 	close(id_socket);
 	return 0;
