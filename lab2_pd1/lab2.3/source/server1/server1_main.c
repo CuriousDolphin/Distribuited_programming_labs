@@ -49,10 +49,7 @@ int main (int argc, char *argv[])
 	char size[4];
 	char timestamp[4];
 	char err[7];   /*stringa errore*/		
-	char* file_buf;
 	char* start_memory; // mi serve per ripristinare il puntatore
-	file_buf=malloc(200000000*sizeof(char)); /* ALLOCO 200 mb di memoria, non è bellissimo ma efficiente*/ /* no riallocazione no ulteriori allocazioni*/
-	start_memory=file_buf;
 	strcpy(err,"-ERR\r\n");
 	buf=malloc(MAXBUFL*sizeof(char));
 	response=malloc(MAXBUFL * sizeof(char));
@@ -101,7 +98,7 @@ int main (int argc, char *argv[])
 						stat(file_name,&st);
 						uint32_t len=htonl(st.st_size);
 						uint32_t tim=htonl(st.st_mtime);
-						file_buf=start_memory; //riporto il puntatore all'inizio
+						//file_buf=start_memory; //riporto il puntatore all'inizio
 						FILE *F;
 						F=fopen(file_name,"r");  	/*apertura FILE */
 
@@ -115,11 +112,15 @@ int main (int argc, char *argv[])
 							break;
 							
 						}else{ 	
+							char* file_buf;
+							
+	
 							
 							printf("\n\t--File opened %s",file_name);					/* LETTURA FILE */
 							fflush(stdout);
 	
 							rewind(F);
+							file_buf=malloc(st.st_size*sizeof(char)); /* allocazione dinamica */
 							int bytes_read=0;							
 							bytes_read= fread( file_buf, 1, st.st_size, F );							
   							printf( "\n\t--Bytes read: %d (previsti: %ld)\n", bytes_read,st.st_size);	
@@ -130,7 +131,8 @@ int main (int argc, char *argv[])
 							sprintf(timestamp,"%u",ntohl(st.st_mtime));
 							strcat(response,"+OK\r\n");
 							Send(connection,response,strlen(response),0); /* +ok */
-							Send(connection,&len,sizeof(len),0);		  /*dimensione*/
+							Send(connection,&len,sizeof(len),0);
+							start_memory=file_buf; /* IMPORTANTE */		  /*dimensione*/
 							size_t nleft; ssize_t nwritten=0;			
 							for(nleft=bytes_read;nleft >0;){
 								nwritten=send(connection,file_buf,nleft,0); /*FILE */
@@ -142,10 +144,10 @@ int main (int argc, char *argv[])
 								}
 
 							}
-							Send(connection,&tim,4,0);
-							
+							file_buf=start_memory; /* RIPORTO IL PUNTATORE ALL'INIZIO */
+							Send(connection,&tim,4,0);	
 							printf("\n\t--sended %s (%ld) \n\n",file_name,nwritten);
-							
+							free(file_buf);
 						}				
 					}else{
 						
@@ -162,7 +164,6 @@ int main (int argc, char *argv[])
 		if(exit_condition==1)
 			close(connection); 
 	}
-	
 	return 0;
 }
 

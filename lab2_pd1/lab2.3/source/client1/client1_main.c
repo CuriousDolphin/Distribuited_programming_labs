@@ -145,6 +145,8 @@ int main (int argc, char *argv[])
             close(id_socket);
         }
 	}
+	free(request);
+	free(command_buf);
 	close(id_socket);
 	return 0;
 }
