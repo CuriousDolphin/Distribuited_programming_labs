@@ -187,6 +187,6 @@ int main(int argc, char *argv[])
 
 void signal_handler(int signal)
 {
-	printf("(%s) - ZOMBIE KILLATO - waiting for connections ...\n", prog_name);
-	wait(NULL);
+	int pid = wait(NULL);
+	printf("(%s) - ZOMBIE KILLATO (%d)-\n(%s) still waiting for connections ...\n", prog_name, pid, prog_name);
 }
