@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -20,7 +21,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-
+#include <signal.h>
 #include "../errlib.h"
 #include "../sockwrap.h"
 #define LISTENQ 15
@@ -33,10 +34,13 @@
 #else
 #define trace(x)
 #endif
+void signal_handler(int);
 char *prog_name;
 
 int main(int argc, char *argv[])
 {
+
+	signal(SIGCHLD, signal_handler); /* SIGNAL HANDLER PER KILLARE GLI ZOMBIE*/
 	int id_socket;
 	int port;
 	struct sockaddr_in servaddr, cliaddr;
@@ -84,18 +88,17 @@ int main(int argc, char *argv[])
 			printf("fork failed =(");
 			exit(0);
 		}
-
 		else if (child_pid > 0)
 		{ /* PROCESSO PADRE */
-			printf("\n\t--- ciao sono il padre-%d", child_pid);
 			close(new_connection);
 		}
 		else
 		{ /* PROCESSO FIGLIO */
-			printf("\n\t--- ciao sono il figlio-%d", child_pid);
+			int pid = getpid();
 			close(id_socket);
 			int exit_condition = 0;
-			while (exit_condition == 0)
+			while (exit_condition == 0) /* serve per rispondere ad ulteriori richieste del client (più parametri) 
+																			per non chiudere la connessione prima di aver servito tutti i file necessari */
 			{
 				char get_buf[4] = "";
 				int n_read = recv(new_connection, buf, MAXBUFL, 0);
@@ -106,7 +109,7 @@ int main(int argc, char *argv[])
 					break;
 				}
 				n_arg = sscanf(buf, "%s %s", get_buf, file_name);
-				printf("\n\t--file name: %s,\n\t--command: %s \n", file_name, get_buf);
+				printf("\n\t(%d)--file name: %s,\n\t(%d)--command: %s \n", pid, file_name, pid, get_buf);
 				if (n_arg == 2 && strcmp(get_buf, "GET") == 0)
 				{
 					struct stat st;
@@ -120,9 +123,7 @@ int main(int argc, char *argv[])
 						printf("\n\tERROR FILE NOT FOUND %s\n", file_name);
 						fflush(stdout);
 						Send(new_connection, err, strlen(err), 0);
-
 						close(new_connection);
-
 						exit_condition = 1;
 						exit(0);
 						break;
@@ -130,21 +131,21 @@ int main(int argc, char *argv[])
 					else
 					{
 						char *file_buf;
-						printf("\n\t--File opened %s", file_name); /* LETTURA FILE */
+						printf("\n\t(%d)--File opened %s", pid, file_name); /* LETTURA FILE */
 						fflush(stdout);
 						rewind(F);
 						file_buf = malloc(st.st_size * sizeof(char)); /* allocazione dinamica */
 						int bytes_read = 0;
 						bytes_read = fread(file_buf, 1, st.st_size, F);
-						printf("\n\t--Bytes read: %d (previsti: %ld)\n", bytes_read, st.st_size);
+						printf("\n\t(%d)--Bytes read: %d (previsti: %ld)\n", pid, bytes_read, st.st_size);
 						fflush(stdout);
 						fclose(F);
 						strcpy(response, "");
 						sprintf(timestamp, "%u", ntohl(st.st_mtime));
 						strcat(response, "+OK\r\n");
 						Send(new_connection, response, strlen(response), 0); /* +ok */
-						Send(new_connection, &len, sizeof(len), 0);
-						start_memory = file_buf; /* IMPORTANTE */ /*dimensione*/
+						Send(new_connection, &len, sizeof(len), 0);					 /* LENGTH*/
+						start_memory = file_buf; /* IMPORTANTE */						 /*dimensione*/
 						size_t nleft;
 						ssize_t nwritten = 0;
 						for (nleft = bytes_read; nleft > 0;)
@@ -162,21 +163,19 @@ int main(int argc, char *argv[])
 						}
 						file_buf = start_memory; /* RIPORTO IL PUNTATORE ALL'INIZIO */
 						Send(new_connection, &tim, 4, 0);
-						printf("\n\t--sended %s (%ld) \n\n", file_name, nwritten);
+						printf("\n\t(%d)--sended %s (%ld) \n\n", pid, file_name, nwritten);
 						free(file_buf);
-						close(new_connection);
-						exit(0);
 					}
 				}
 				else
 				{
 					Send(new_connection, err, strlen(err), 0);
-					printf("\n\t--error number argument (sscanf)");
+					printf("\n\t(%d)--error number argument (sscanf)", pid);
 					exit_condition = 1;
-					close(new_connection);
-					exit(0);
 				}
 			}
+			close(new_connection); /* CHIUSURA CONNESSIONE FIGLIO */
+			exit(0);							 /* USCITA FIGLIO */
 		}
 
 		sprintf(size, "any");
@@ -184,4 +183,10 @@ int main(int argc, char *argv[])
 	}
 
 	return 0;
+}
+
+void signal_handler(int signal)
+{
+	printf("(%s) - ZOMBIE KILLATO - waiting for connections ...\n", prog_name);
+	wait(NULL);
 }
