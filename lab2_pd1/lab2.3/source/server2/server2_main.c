@@ -28,13 +28,15 @@
 #define MAXBUFL 50
 #define MAXBUFF 100
 #define MAX_UINT16T 0xffff
-
+#define CHUNK_SIZE 1500
 #ifdef TRACE
 #define trace(x) x
 #else
 #define trace(x)
 #endif
 void signal_handler(int);
+
+int send_n(int, char *, size_t);
 char *prog_name;
 
 int main(int argc, char *argv[])
@@ -51,8 +53,7 @@ int main(int argc, char *argv[])
 	char response[MAXBUFF]; /* command for reply ..ok err */
 	char size[4];
 	char timestamp[4];
-	char err[7];				/*stringa errore*/
-	char *start_memory; // mi serve per ripristinare il puntatore
+	char err[7]; /*stringa errore*/
 	strcpy(err, "-ERR\r\n");
 
 	if (argc != 2 || argv[1] < 0)
@@ -134,37 +135,28 @@ int main(int argc, char *argv[])
 						printf("\n\t(%d)--File opened %s", pid, file_name); /* LETTURA FILE */
 						fflush(stdout);
 						rewind(F);
-						file_buf = malloc(st.st_size * sizeof(char)); /* allocazione dinamica */
-						int bytes_read = 0;
-						bytes_read = fread(file_buf, 1, st.st_size, F);
-						printf("\n\t(%d)--Bytes read: %d (previsti: %ld)\n", pid, bytes_read, st.st_size);
-						fflush(stdout);
-						fclose(F);
+						file_buf = malloc(CHUNK_SIZE * sizeof(char));
+
 						strcpy(response, "");
 						sprintf(timestamp, "%u", ntohl(st.st_mtime));
 						strcat(response, "+OK\r\n");
 						Send(new_connection, response, strlen(response), 0); /* +ok */
 						Send(new_connection, &len, sizeof(len), 0);					 /* LENGTH*/
-						start_memory = file_buf; /* IMPORTANTE */						 /*dimensione*/
-						size_t nleft;
-						ssize_t nwritten = 0;
-						for (nleft = bytes_read; nleft > 0;)
+						int i = 0;																					 //CHUNK COUNTER
+						size_t nwritten = 0;
+						int stop = 0;
+						while (stop == 0) /* INVIO CHUNK di 1500 byte alla volta */
 						{
-							nwritten = send(new_connection, file_buf, nleft, 0); /*FILE */
-							if (nwritten <= 0)
-							{ /*ERRORE*/
-								//	return (nwritten);
-							}
-							else
-							{
-								nleft -= nwritten;
-								file_buf += nwritten;
-							}
+							int read = fread(file_buf, 1, CHUNK_SIZE, F);
+							nwritten += send_n(new_connection, file_buf, read);
+							i++;
+							if (read < CHUNK_SIZE)
+								stop = 1;
 						}
-						file_buf = start_memory; /* RIPORTO IL PUNTATORE ALL'INIZIO */
-						Send(new_connection, &tim, 4, 0);
-						printf("\n\t(%d)--sended %s (%ld) \n\n", pid, file_name, nwritten);
 						free(file_buf);
+						fclose(F);
+						Send(new_connection, &tim, 4, 0);
+						printf("\n\t(%d)--sended %s  %ld bytes (%d chunks )\n\n", pid, file_name, nwritten, i);
 					}
 				}
 				else
@@ -189,4 +181,27 @@ void signal_handler(int signal)
 {
 	int pid = wait(NULL);
 	printf("(%s) - ZOMBIE KILLATO (%d)-\n(%s) still waiting for connections ...\n", prog_name, pid, prog_name);
+}
+
+int send_n(int s, char *ptr, size_t nbytes)
+{
+	size_t nleft;
+	ssize_t nwritten;
+	for (nleft = nbytes; nleft > 0;)
+	{
+		nwritten = send(s, ptr, nleft, 0);
+		if (nwritten <= 0) /* error */
+		{
+			printf("\n send failed");
+			return (nwritten);
+		}
+
+		else
+		{
+			nleft -= nwritten;
+			ptr += nwritten;
+		}
+	}
+
+	return (nbytes - nleft);
 }
