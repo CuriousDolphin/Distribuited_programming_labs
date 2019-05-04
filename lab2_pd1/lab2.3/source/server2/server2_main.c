@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 					struct stat st;
 					stat(file_name, &st);
 					uint32_t len = htonl(st.st_size);
-					uint32_t tim = htonl(st.st_mtime);
+					uint32_t tim = htonl(st.st_mtime); // TIMESTAMP
 					FILE *F;
 					F = fopen(file_name, "r"); /*apertura FILE */
 					if (F == NULL)
@@ -132,31 +132,31 @@ int main(int argc, char *argv[])
 					else
 					{
 						char *file_buf;
+						file_buf = malloc(CHUNK_SIZE * sizeof(char));
 						printf("\n\t(%d)--File opened %s", pid, file_name); /* LETTURA FILE */
 						fflush(stdout);
 						rewind(F);
-						file_buf = malloc(CHUNK_SIZE * sizeof(char));
-
 						strcpy(response, "");
 						sprintf(timestamp, "%u", ntohl(st.st_mtime));
 						strcat(response, "+OK\r\n");
 						Send(new_connection, response, strlen(response), 0); /* +ok */
 						Send(new_connection, &len, sizeof(len), 0);					 /* LENGTH*/
 						int i = 0;																					 //CHUNK COUNTER
-						size_t nwritten = 0;
+						size_t nsended = 0; //Byte inviati
 						int stop = 0;
+						int read = 0;			//byte letti dalla fread
 						while (stop == 0) /* INVIO CHUNK di 1500 byte alla volta */
 						{
-							int read = fread(file_buf, 1, CHUNK_SIZE, F);
-							nwritten += send_n(new_connection, file_buf, read);
+							read = fread(file_buf, 1, CHUNK_SIZE, F);
+							nsended += send_n(new_connection, file_buf, read);
 							i++;
-							if (read < CHUNK_SIZE)
+							if (read < CHUNK_SIZE) // condizione di terminazione
 								stop = 1;
 						}
 						free(file_buf);
 						fclose(F);
-						Send(new_connection, &tim, 4, 0);
-						printf("\n\t(%d)--sended %s  %ld bytes (%d chunks )\n\n", pid, file_name, nwritten, i);
+						Send(new_connection, &tim, 4, 0); //INVIO TIMESTAMP
+						printf("\n\t(%d)--sended %s  %ld bytes (%d chunks )\n\n", pid, file_name, nsended, i);
 					}
 				}
 				else
