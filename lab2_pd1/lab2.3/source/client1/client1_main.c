@@ -18,6 +18,7 @@
 #define LISTENQ 15
 #define MAXBUFL 50
 #define MAX_UINT16T 0xffff
+#define CHUNK_SIZE 1500
 #ifdef TRACE
 #define trace(x) x
 #else
@@ -25,6 +26,7 @@
 #endif
 char *prog_name;
 
+int read_n(int, char *, size_t);
 int main(int argc, char *argv[])
 {
 	int id_socket;
@@ -68,8 +70,8 @@ int main(int argc, char *argv[])
 		fd_set cset;							//insieme di socket su cui agisce la SELECT
 		FD_ZERO(&cset);						//azzero il set
 		FD_SET(id_socket, &cset); //ASSOCIO IL SOCKET ALL'INSIEME
-		int time = 10;
-		tval.tv_sec = time;
+		int times = 10;
+		tval.tv_sec = times;
 		tval.tv_usec = 0; //imposto il tempo nell astruttura
 		int res_sel;
 		/* SELECT */
@@ -92,24 +94,9 @@ int main(int argc, char *argv[])
 				printf("\t--Received Response OK");
 				Recv(id_socket, &len, 4, 0); /* LUNGHEZZA */
 				file_len = ntohl(len);
-				ssize_t file_size = file_len;
 				printf("\t--Received file len: '%u' byte", file_len);
 				fflush(stdout);
-				file_buf = malloc(file_size * sizeof(char)); /* ALLOCAZIONE DINAMICA, FREE PIU GIU */
-				char *start_memory = file_buf;
-				/* RICEZIONE FILE */
-				ssize_t nread;
-				size_t nleft;
-				for (nleft = file_len; nleft > 0;)
-				{
-					nread = Recv(id_socket, file_buf, nleft, 0);
-					if (nread > 0)
-					{
-						nleft -= nread;
-						file_buf += nread;
-					}
-				}
-				file_buf = start_memory;
+				file_buf = malloc(CHUNK_SIZE * sizeof(char));
 				FILE *F;
 				F = fopen(argv[i], "w");
 				if (F == NULL)
@@ -118,13 +105,50 @@ int main(int argc, char *argv[])
 					fflush(stdout);
 					return -1;
 				}
-				fwrite(file_buf, 1, file_size, F);
+				/* RICEZIONE FILE */
+				ssize_t nread = 0;
+				size_t nleft;
+				nleft = file_len;
+				int cont = 0;
+
+				if (file_len < CHUNK_SIZE) //RICEVO IN UNA VOLTA SOLA
+				{
+					nread = Recv(id_socket, file_buf, file_len, 0);
+					cont = 1;
+					fwrite(file_buf, 1, nread, F);
+				}
+				else
+				{
+
+					size_t size_to_download = CHUNK_SIZE;
+					while (nleft > 0) // RICEVO e scrivo 1500 byte alla volta
+					{
+						if (nleft < CHUNK_SIZE)
+						{
+							size_to_download = nleft;
+						}
+						nread = Recv(id_socket, file_buf, size_to_download, 0);
+						if (nread > 0)
+						{
+							nleft -= nread;
+							cont++;
+
+							fwrite(file_buf, 1, nread, F);
+						}
+						else
+						{
+							printf("\n recv error");
+							fflush(stdout);
+							break;
+						}
+					}
+				}
 				fclose(F);
 				struct stat st;
 				stat(argv[i], &st);
 				Recv(id_socket, &timest, 4, 0);
 				timestamp = htonl(timest);
-				printf("\n\t---'%s' downloaded %ld byte", argv[i], st.st_size);
+				printf("\n\t---'%s' downloaded %ld byte (%d) chunks", argv[i], st.st_size, cont);
 				printf("\n\t--Received  timestamp: %u  \n\n", timestamp);
 				free(file_buf);
 			}
@@ -138,11 +162,33 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			printf("---timeout exceded %d seconds\n", time);
+			printf("---timeout exceded %d seconds\n", times);
 			close(id_socket);
 		}
 	}
 	free(command_buf);
 	close(id_socket);
 	return 0;
+}
+
+int read_n(int s, char *ptr, size_t len)
+{
+	ssize_t nread;
+	size_t nleft;
+
+	for (nleft = len; nleft > 0;)
+	{
+		nread = recv(s, ptr, nleft, 0);
+		if (nread > 0)
+		{
+			nleft -= nread;
+			ptr += nread;
+		}
+		else if (nread == 0) /* conn. closed by party */
+			break;
+		else
+			/* error */
+			return (nread);
+	}
+	return (len - nleft);
 }
