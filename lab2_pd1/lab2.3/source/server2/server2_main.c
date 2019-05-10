@@ -98,72 +98,99 @@ int main(int argc, char *argv[])
 			int pid = getpid();
 			close(id_socket);
 			int exit_condition = 0;
-			while (exit_condition == 0) /* serve per rispondere ad ulteriori richieste del client (più parametri) 
-																			per non chiudere la connessione prima di aver servito tutti i file necessari */
+			int res_sel;		//RISULTATO SELECT
+			int times = 15; //14 secondi
+			struct timeval tval;
+			fd_set cset;									 //insieme di socket su cui agisce la SELECT
+			FD_ZERO(&cset);								 //azzero il set
+			FD_SET(new_connection, &cset); //ASSOCIO IL SOCKET ALL'INSIEME
+			tval.tv_sec = times;
+			tval.tv_usec = 0; //imposto il tempo nell astruttura
+			res_sel = select(FD_SETSIZE, &cset, NULL, NULL, &tval);
+			if (res_sel == -1)
 			{
-				char get_buf[4] = "";
-				int n_read = recv(new_connection, buf, MAXBUFL, 0);
-				int n_arg = 0;
-				if (n_read <= 0)
+				Send(new_connection, err, strlen(err), 0); // error message
+				printf("select() failed");
+				close(new_connection);
+				return 0;
+			}
+			else if (res_sel <= 0) //TIMEOUT
+			{
+				Send(new_connection, err, strlen(err), 0); // error message
+				printf("\n\t(%d)---timeout exceded %d seconds\n", pid, times);
+				close(new_connection);
+				return 0;
+			}
+			else
+			{
+				while (exit_condition == 0) /* serve per rispondere ad ulteriori richieste del client (più parametri) 
+																			per non chiudere la connessione prima di aver servito tutti i file necessari */
 				{
-					exit_condition = 1;
-					break;
-				}
-				n_arg = sscanf(buf, "%s %s", get_buf, file_name);
-				printf("\n\t(%d)--file name: %s,\n\t(%d)--command: %s \n", pid, file_name, pid, get_buf);
-				if (n_arg == 2 && strcmp(get_buf, "GET") == 0)
-				{
-					struct stat st;
-					stat(file_name, &st);
-					uint32_t len = htonl(st.st_size);
-					uint32_t tim = htonl(st.st_mtime); // TIMESTAMP
-					FILE *F;
-					F = fopen(file_name, "r"); /*apertura FILE */
-					if (F == NULL)
+
+					char get_buf[4] = "";
+					int n_read = recv(new_connection, buf, MAXBUFL, 0);
+					int n_arg = 0;
+					if (n_read <= 0)
 					{
-						printf("\n\tERROR FILE NOT FOUND %s\n", file_name);
-						fflush(stdout);
-						Send(new_connection, err, strlen(err), 0);
-						close(new_connection);
 						exit_condition = 1;
-						exit(0);
 						break;
+					}
+					n_arg = sscanf(buf, "%s %s", get_buf, file_name);
+					printf("\n\t(%d)--file name: %s,\n\t(%d)--command: %s \n", pid, file_name, pid, get_buf);
+					if (n_arg == 2 && strcmp(get_buf, "GET") == 0)
+					{
+						struct stat st;
+						stat(file_name, &st);
+						uint32_t len = htonl(st.st_size);
+						uint32_t tim = htonl(st.st_mtime); // TIMESTAMP
+						FILE *F;
+						F = fopen(file_name, "r"); /*apertura FILE */
+						if (F == NULL)
+						{
+							printf("\n\tERROR FILE NOT FOUND %s\n", file_name);
+							fflush(stdout);
+							Send(new_connection, err, strlen(err), 0);
+							close(new_connection);
+							exit_condition = 1;
+							exit(0);
+							break;
+						}
+						else
+						{
+							char *file_buf;
+							file_buf = malloc(CHUNK_SIZE * sizeof(char));
+							printf("\n\t(%d)--File opened %s", pid, file_name); /* LETTURA FILE */
+							fflush(stdout);
+							rewind(F);
+							strcpy(response, "");
+							sprintf(timestamp, "%u", ntohl(st.st_mtime));
+							strcat(response, "+OK\r\n");
+							Send(new_connection, response, strlen(response), 0); /* +ok */
+							Send(new_connection, &len, sizeof(len), 0);					 /* LENGTH*/
+							int i = 0;																					 //CHUNK COUNTER
+							size_t nsended = 0;																	 //Byte inviati
+							int stop = 0;
+							int read = 0;			//byte letti dalla fread
+							while (stop == 0) /* INVIO CHUNK di 1500 byte alla volta */
+							{
+								read = fread(file_buf, 1, CHUNK_SIZE, F);
+								nsended += send_n(new_connection, file_buf, read);
+								i++;
+								if (read < CHUNK_SIZE) // condizione di terminazione
+									stop = 1;
+							}
+							free(file_buf);
+							fclose(F);
+							Send(new_connection, &tim, 4, 0); //INVIO TIMESTAMP
+							printf("\n\t(%d)--sended %s  %ld bytes (%d chunks )\n\n", pid, file_name, nsended, i);
+						}
 					}
 					else
 					{
-						char *file_buf;
-						file_buf = malloc(CHUNK_SIZE * sizeof(char));
-						printf("\n\t(%d)--File opened %s", pid, file_name); /* LETTURA FILE */
-						fflush(stdout);
-						rewind(F);
-						strcpy(response, "");
-						sprintf(timestamp, "%u", ntohl(st.st_mtime));
-						strcat(response, "+OK\r\n");
-						Send(new_connection, response, strlen(response), 0); /* +ok */
-						Send(new_connection, &len, sizeof(len), 0);					 /* LENGTH*/
-						int i = 0;																					 //CHUNK COUNTER
-						size_t nsended = 0; //Byte inviati
-						int stop = 0;
-						int read = 0;			//byte letti dalla fread
-						while (stop == 0) /* INVIO CHUNK di 1500 byte alla volta */
-						{
-							read = fread(file_buf, 1, CHUNK_SIZE, F);
-							nsended += send_n(new_connection, file_buf, read);
-							i++;
-							if (read < CHUNK_SIZE) // condizione di terminazione
-								stop = 1;
-						}
-						free(file_buf);
-						fclose(F);
-						Send(new_connection, &tim, 4, 0); //INVIO TIMESTAMP
-						printf("\n\t(%d)--sended %s  %ld bytes (%d chunks )\n\n", pid, file_name, nsended, i);
+						Send(new_connection, err, strlen(err), 0);
+						printf("\n\t(%d)--error number argument (sscanf)", pid);
+						exit_condition = 1;
 					}
-				}
-				else
-				{
-					Send(new_connection, err, strlen(err), 0);
-					printf("\n\t(%d)--error number argument (sscanf)", pid);
-					exit_condition = 1;
 				}
 			}
 			close(new_connection); /* CHIUSURA CONNESSIONE FIGLIO */
@@ -180,7 +207,7 @@ int main(int argc, char *argv[])
 void signal_handler(int signal)
 {
 	int pid = wait(NULL);
-	printf("(%s) - ZOMBIE KILLATO (%d)-\n(%s) still waiting for connections ...\n", prog_name, pid, prog_name);
+	printf("\n(%s) - connection closed  zombie killato: (%d)-\n(%s) still waiting for connections ...\n", prog_name, pid, prog_name);
 }
 
 int send_n(int s, char *ptr, size_t nbytes)
