@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 		fd_set cset;							//insieme di socket su cui agisce la SELECT
 		FD_ZERO(&cset);						//azzero il set
 		FD_SET(id_socket, &cset); //ASSOCIO IL SOCKET ALL'INSIEME
-		int times = 10;
+		int times = 15;
 		tval.tv_sec = times;
 		tval.tv_usec = 0; //imposto il tempo nell astruttura
 		int res_sel;
