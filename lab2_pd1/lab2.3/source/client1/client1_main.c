@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 	socklen_t cliaddrlen = sizeof(cliaddr);
 	command_buf = calloc(6, sizeof(char));
 	prog_name = argv[0];
-	if (argc < 3)
+	if (argc < 4)
 	{
 		err_quit("wrong params usage: %s need <address> <port>\n ", prog_name);
 	}
