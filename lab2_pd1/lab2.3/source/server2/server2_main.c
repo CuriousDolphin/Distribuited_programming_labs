@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 	trace(err_msg("(%s) listening on %s:%u", prog_name, inet_ntoa(servaddr.sin_addr), ntohs(servaddr.sin_port)));
 	Listen(id_socket, LISTENQ);
 	int new_connection;
-
+	int times = 14; //14 secondi
 	while (1)
 	{
 		trace(err_msg("(%s) waiting for connections ...", prog_name));
@@ -98,35 +98,34 @@ int main(int argc, char *argv[])
 			int pid = getpid();
 			close(id_socket);
 			int exit_condition = 0;
-			int res_sel;		//RISULTATO SELECT
-			int times = 15; //14 secondi
-			struct timeval tval;
-			fd_set cset;									 //insieme di socket su cui agisce la SELECT
-			FD_ZERO(&cset);								 //azzero il set
-			FD_SET(new_connection, &cset); //ASSOCIO IL SOCKET ALL'INSIEME
-			tval.tv_sec = times;
-			tval.tv_usec = 0; //imposto il tempo nell astruttura
-			res_sel = select(FD_SETSIZE, &cset, NULL, NULL, &tval);
-			if (res_sel == -1)
-			{
-				Send(new_connection, err, strlen(err), 0); // error message
-				printf("select() failed");
-				close(new_connection);
-				return 0;
-			}
-			else if (res_sel <= 0) //TIMEOUT
-			{
-				Send(new_connection, err, strlen(err), 0); // error message
-				printf("\n\t(%d)---timeout exceded %d seconds\n", pid, times);
-				close(new_connection);
-				return 0;
-			}
-			else
-			{
-				while (exit_condition == 0) /* serve per rispondere ad ulteriori richieste del client (più parametri) 
-																			per non chiudere la connessione prima di aver servito tutti i file necessari */
-				{
 
+			while (exit_condition == 0) /* serve per rispondere ad ulteriori richieste del client (più parametri) 
+																			per non chiudere la connessione prima di aver servito tutti i file necessari */
+			{
+				int res_sel; //RISULTATO SELECT
+				struct timeval tval;
+				fd_set cset;									 //insieme di socket su cui agisce la SELECT
+				FD_ZERO(&cset);								 //azzero il set
+				FD_SET(new_connection, &cset); //ASSOCIO IL SOCKET ALL'INSIEME
+				tval.tv_sec = times;
+				tval.tv_usec = 0; //imposto il tempo nell astruttura
+				res_sel = select(FD_SETSIZE, &cset, NULL, NULL, &tval);
+				if (res_sel == -1)
+				{
+					Send(new_connection, err, strlen(err), 0); // error message
+					printf("select() failed");
+					close(new_connection);
+					return 0;
+				}
+				else if (res_sel == 0) //TIMEOUT
+				{
+					Send(new_connection, err, strlen(err), 0); // error message
+					printf("\n\t(%d)---timeout exceded %d seconds\n", pid, times);
+					close(new_connection);
+					return 0;
+				}
+				else
+				{
 					char get_buf[4] = "";
 					int n_read = recv(new_connection, buf, MAXBUFL, 0);
 					int n_arg = 0;

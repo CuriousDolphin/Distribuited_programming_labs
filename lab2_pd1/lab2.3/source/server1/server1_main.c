@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
 	trace(err_msg("(%s) listening on %s:%u", prog_name, inet_ntoa(servaddr.sin_addr), ntohs(servaddr.sin_port)));
 	Listen(id_socket, LISTENQ);
 	int connection;
+	int times = 15; //14 secondi
 
 	while (1)
 	{
@@ -77,38 +78,42 @@ int main(int argc, char *argv[])
 		fflush(stdout);
 		connection = accept(id_socket, (SA *)&cliaddr, &cliaddrlen);
 		trace(err_msg("(%s) - new connection from client %s:%u", prog_name, inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port)));
-		int res_sel;		//RISULTATO SELECT
-		int times = 14; //14 secondi
-		struct timeval tval;
-		fd_set cset;							 //insieme di socket su cui agisce la SELECT
-		FD_ZERO(&cset);						 //azzero il set
-		FD_SET(connection, &cset); //ASSOCIO IL SOCKET ALL'INSIEME
-		tval.tv_sec = times;
-		tval.tv_usec = 0; //imposto il tempo nell astruttura
-		res_sel = select(FD_SETSIZE, &cset, NULL, NULL, &tval);
-		if (res_sel == -1)
-		{
-			Send(connection, err, strlen(err), 0); // error message
-			printf("select() failed");
-			close(connection);
-			continue;
-		}
-		else if (res_sel <= 0) //TIMEOUT
-		{
-			Send(connection, err, strlen(err), 0); // error message
-			printf("---timeout exceded %d seconds\n", times);
-			close(connection);
-			continue;
-		}
-		else
+
+		int exit_condition = 0;
+		while (exit_condition == 0)
 		{
 
-			int exit_condition = 0;
-			while (exit_condition == 0)
+			fflush(stdout);
+			char get_buf[4] = "";
+			int res_sel;							 //RISULTATO SELECT
+			fd_set cset;							 //insieme di socket su cui agisce la SELECT
+			FD_ZERO(&cset);						 //azzero il set
+			FD_SET(connection, &cset); //ASSOCIO IL SOCKET ALL'INSIEME
+			struct timeval tval;
+			tval.tv_sec = times;
+			tval.tv_usec = 0; //imposto il tempo nell astruttura
+			res_sel = select(FD_SETSIZE, &cset, NULL, NULL, &tval);
+			if (res_sel == -1)
 			{
-
-				char get_buf[4] = "";
+				//Send(connection, err, strlen(err), 0); // error message
+				printf("select() failed");
+				fflush(stdout);
+				close(connection);
+				break;
+			}
+			else if (res_sel == 0) //TIMEOUT
+			{
+				//Send(connection, err, strlen(err), 0); // error message
+				printf("---timeout exceded %d seconds\n", times);
+				fflush(stdout);
+				close(connection);
+				break;
+			}
+			else
+			{
 				int n_read = recv(connection, buf, MAXBUFL, MSG_NOSIGNAL);
+
+				fflush(stdout);
 				if (n_read <= 0)
 				{
 					exit_condition = 1;
@@ -198,6 +203,7 @@ int main(int argc, char *argv[])
 						fclose(F);
 						Send(connection, &tim, 4, MSG_NOSIGNAL); //INVIO TIMESTAMP
 						printf("\n\t--sended %s  %ld bytes (%d chunks )\n\n", file_name, tot_sended, i);
+						fflush(stdout);
 					}
 				}
 				else
